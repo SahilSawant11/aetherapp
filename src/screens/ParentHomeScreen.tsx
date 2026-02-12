@@ -28,15 +28,12 @@ export function ParentHomeScreen() {
   }, [menuOpen, overlayOpacity, slideX]);
 
   return (
-
     <SafeAreaView style={styles.container}>
       <ParentHeader onMenuPress={() => setMenuOpen(true)} />
 
       <View style={styles.main}>
-            <ScrollView>
-        <ParentStatusSection />
-        <ParentPickupCard />
-        </ScrollView>
+          <ParentStatusSection />
+          <ParentPickupCard />
       </View>
 
       <ParentBottomTabs />

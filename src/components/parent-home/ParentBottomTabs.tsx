@@ -25,6 +25,7 @@ export function ParentBottomTabs() {
 
 const styles = StyleSheet.create({
   tabBar: {
+    height:74,
     marginBottom: 8,
     marginHorizontal: 10,
     padding: 10,
@@ -41,7 +42,7 @@ const styles = StyleSheet.create({
   },
   tabActive: {
     width: 126,
-    height: 112,
+    height: 64,
     borderRadius: 30,
     backgroundColor: '#D1FAE5',
     alignItems: 'center',
@@ -50,7 +51,7 @@ const styles = StyleSheet.create({
   },
   tabItem: {
     width: 96,
-    height: 96,
+    height: 44,
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
