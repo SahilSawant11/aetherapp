@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, ScrollView, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ParentBottomTabs } from '../components/parent-home/ParentBottomTabs';
 import { ParentHeader } from '../components/parent-home/ParentHeader';
-import { ParentPickupCard } from '../components/parent-home/ParentPickupCard';
 import { ParentSidebar } from '../components/parent-home/ParentSidebar';
 import { ParentStatusSection } from '../components/parent-home/ParentStatusSection';
 
@@ -29,14 +28,17 @@ export function ParentHomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ParentHeader onMenuPress={() => setMenuOpen(true)} />
+      <View style={styles.panel}>
+        <ParentHeader onMenuPress={() => setMenuOpen(true)} />
+        <View style={styles.headerDivider} />
 
-      <View style={styles.main}>
+        <View style={styles.main}>
           <ParentStatusSection />
-          <ParentPickupCard />
+        </View>
+
+        <ParentBottomTabs />
       </View>
 
-      <ParentBottomTabs />
       <ParentSidebar
         isOpen={menuOpen}
         overlayOpacity={overlayOpacity}
@@ -50,10 +52,21 @@ export function ParentHomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E5E7EB',
-    paddingHorizontal: 18,
+    backgroundColor: '#EDEFF2',
+  },
+  panel: {
+    flex: 1,
+    marginHorizontal: 4,
+    borderRadius: 28,
+    backgroundColor: '#F2F5F7',
+    overflow: 'hidden',
+  },
+  headerDivider: {
+    height: 1,
+    backgroundColor: '#D7DEE7',
   },
   main: {
     flex: 1,
+    paddingHorizontal: 14,
   },
 });
