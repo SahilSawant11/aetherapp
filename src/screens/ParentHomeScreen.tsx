@@ -31,16 +31,25 @@ export function ParentHomeScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.panel}>
         <LinearGradient
-          colors={['#DCE9F8', '#ECF2FA', '#D8F2E8']}
+          colors={['#8FD8B5', '#BCEBD3', '#67C79D']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
+        <LinearGradient
+          colors={['rgba(5, 150, 105, 0.34)', 'rgba(5, 150, 105, 0.14)', 'rgba(5, 150, 105, 0.00)']}
+          start={{ x: 0.24, y: 0 }}
+          end={{ x: 0.78, y: 0.36 }}
+          style={styles.topTint}
+        />
         <View style={styles.bgOrbOne} />
         <View style={styles.bgOrbTwo} />
+        <View style={styles.bgOrbTopGlass} />
+        <View style={styles.bgOrbBottomGlass} />
+        <View style={styles.bgOrbHeaderFocus} />
+        <View style={styles.bgOrbFooterFocus} />
 
         <ParentHeader onMenuPress={() => setMenuOpen(true)} />
-        <View style={styles.headerDivider} />
 
         <View style={styles.main}>
           <ParentStatusSection />
@@ -68,12 +77,8 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 4,
     borderRadius: 28,
-    backgroundColor: 'rgba(242, 245, 247, 0.4)',
+    backgroundColor: 'transparent',
     overflow: 'hidden',
-  },
-  headerDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.38)',
   },
   main: {
     flex: 1,
@@ -86,7 +91,7 @@ const styles = StyleSheet.create({
     width: 210,
     height: 210,
     borderRadius: 210,
-    backgroundColor: 'rgba(125, 211, 252, 0.30)',
+    backgroundColor: 'rgba(5, 150, 105, 0.46)',
   },
   bgOrbTwo: {
     position: 'absolute',
@@ -95,6 +100,45 @@ const styles = StyleSheet.create({
     width: 220,
     height: 220,
     borderRadius: 220,
-    backgroundColor: 'rgba(110, 231, 183, 0.24)',
+    backgroundColor: 'rgba(4, 120, 87, 0.48)',
+  },
+  topTint: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  bgOrbTopGlass: {
+    position: 'absolute',
+    top: -36,
+    left: 70,
+    width: 250,
+    height: 180,
+    borderRadius: 220,
+    backgroundColor: 'rgba(34, 197, 94, 0.40)',
+  },
+  bgOrbBottomGlass: {
+    position: 'absolute',
+    bottom: -26,
+    right: -38,
+    width: 260,
+    height: 190,
+    borderRadius: 230,
+    backgroundColor: 'rgba(16, 185, 129, 0.42)',
+  },
+  bgOrbHeaderFocus: {
+    position: 'absolute',
+    top: -52,
+    right: 16,
+    width: 280,
+    height: 180,
+    borderRadius: 220,
+    backgroundColor: 'rgba(20, 184, 166, 0.34)',
+  },
+  bgOrbFooterFocus: {
+    position: 'absolute',
+    bottom: -34,
+    left: 40,
+    width: 300,
+    height: 200,
+    borderRadius: 240,
+    backgroundColor: 'rgba(52, 211, 153, 0.34)',
   },
 });

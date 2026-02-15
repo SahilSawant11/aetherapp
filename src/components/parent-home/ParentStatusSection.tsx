@@ -1,7 +1,9 @@
 import React, { memo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
+import { BlurView } from '@react-native-community/blur';
 import Svg, { Path } from 'react-native-svg';
 import { ParentCrystalCenterpiece } from './ParentCrystalCenterpiece';
+import { getGlassPalette } from './glassTokens';
 
 function LocationPinIcon() {
   return (
@@ -18,6 +20,8 @@ function LocationPinIcon() {
 }
 
 function ParentStatusSectionComponent() {
+  const pillGlass = getGlassPalette('pill');
+
   return (
     <View style={styles.main}>
       <View style={styles.heroWrap}>
@@ -27,9 +31,29 @@ function ParentStatusSectionComponent() {
       <Text style={styles.kicker}>CURRENTLY ATTENDING</Text>
       <Text style={styles.classTitle}>Arts</Text>
 
-      <View style={styles.locationPill}>
-        <LocationPinIcon />
-        <Text style={styles.locationText}>Class X B</Text>
+      <View
+        style={[
+          styles.locationPill,
+          {
+            backgroundColor: pillGlass.fallback,
+            borderColor: pillGlass.border,
+            shadowColor: pillGlass.shadowColor,
+            shadowOpacity: pillGlass.shadowOpacity,
+          },
+        ]}
+      >
+        <BlurView
+          blurType={Platform.OS === 'ios' ? pillGlass.blurType : 'light'}
+          blurAmount={pillGlass.blurAmount}
+          overlayColor={Platform.OS === 'android' ? 'rgba(0,0,0,0)' : undefined}
+          reducedTransparencyFallbackColor={pillGlass.fallback}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: pillGlass.overlay }]} />
+        <View style={styles.locationPillContent}>
+          <LocationPinIcon />
+          <Text style={styles.locationText}>Class X B</Text>
+        </View>
       </View>
 
       <Text style={styles.timeText}>10:30 AM - 11:45 AM</Text>
@@ -67,20 +91,20 @@ const styles = StyleSheet.create({
   },
   locationPill: {
     marginTop: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
     paddingHorizontal: 26,
     height: 74,
     borderRadius: 28,
-    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.06,
+    overflow: 'hidden',
+    justifyContent: 'center',
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
+  },
+  locationPillContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   locationText: {
     fontSize: 18,
