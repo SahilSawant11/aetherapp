@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { ParentCrystalCenterpiece } from './ParentCrystalCenterpiece';
@@ -17,7 +17,7 @@ function LocationPinIcon() {
   );
 }
 
-export function ParentStatusSection() {
+function ParentStatusSectionComponent() {
   return (
     <View style={styles.main}>
       <View style={styles.heroWrap}>
@@ -36,6 +36,8 @@ export function ParentStatusSection() {
     </View>
   );
 }
+
+export const ParentStatusSection = memo(ParentStatusSectionComponent);
 
 const styles = StyleSheet.create({
   main: {

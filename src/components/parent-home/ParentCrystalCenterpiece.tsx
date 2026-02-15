@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Animated, PanResponder, StyleSheet, View } from 'react-native';
 import {
   Camera,
@@ -11,7 +11,7 @@ import {
 
 const CRYSTAL_SOURCE = require('../../assets/models/aether-crystal.glb');
 
-function CrystalScene() {
+const CrystalScene = memo(function CrystalScene() {
   const pinchDistanceRef = useRef<number | null>(null);
   const inertiaFrameRef = useRef<number | null>(null);
   const grabActiveRef = useRef(false);
@@ -217,9 +217,9 @@ function CrystalScene() {
       </FilamentView>
     </View>
   );
-}
+});
 
-export function ParentCrystalCenterpiece() {
+function ParentCrystalCenterpieceComponent() {
   const idleFloat = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -263,6 +263,8 @@ export function ParentCrystalCenterpiece() {
     </View>
   );
 }
+
+export const ParentCrystalCenterpiece = memo(ParentCrystalCenterpieceComponent);
 
 const styles = StyleSheet.create({
   main: {
