@@ -5,6 +5,81 @@ import Svg, { Path } from 'react-native-svg';
 import { ParentCrystalCenterpiece } from './ParentCrystalCenterpiece';
 import { getGlassPalette } from './glassTokens';
 
+type LectureSlot = {
+  title: string;
+  room: string;
+  start: string;
+  end: string;
+};
+
+const WEEKDAY_TIMETABLE: LectureSlot[] = [
+  { title: 'Mathematics', room: 'Class X B', start: '08:30', end: '09:15' },
+  { title: 'Science', room: 'Lab 2', start: '09:20', end: '10:05' },
+  { title: 'Arts', room: 'Class X B', start: '10:30', end: '11:45' },
+  { title: 'English', room: 'Class X B', start: '12:00', end: '12:45' },
+  { title: 'History', room: 'Class X B', start: '13:30', end: '14:15' },
+  { title: 'Sports', room: 'Ground', start: '14:20', end: '15:05' },
+];
+
+const toMinutes = (time: string): number => {
+  const [hours, minutes] = time.split(':').map(Number);
+  return hours * 60 + minutes;
+};
+
+const to12Hour = (time: string): string => {
+  const [hourText, minuteText] = time.split(':');
+  const hour24 = Number(hourText);
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  const suffix = hour24 >= 12 ? 'PM' : 'AM';
+  return `${hour12}:${minuteText} ${suffix}`;
+};
+
+const getCurrentLectureState = () => {
+  const now = new Date();
+  const day = now.getDay();
+  if (day === 0 || day === 6) {
+    return {
+      kicker: 'NO CLASSES TODAY',
+      title: 'Weekend',
+      room: 'School closed',
+      time: 'Check calendar for attendance records',
+    };
+  }
+
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const currentLecture = WEEKDAY_TIMETABLE.find(slot => {
+    const start = toMinutes(slot.start);
+    const end = toMinutes(slot.end);
+    return nowMinutes >= start && nowMinutes < end;
+  });
+
+  if (currentLecture) {
+    return {
+      kicker: 'CURRENTLY ATTENDING',
+      title: currentLecture.title,
+      room: currentLecture.room,
+      time: `${to12Hour(currentLecture.start)} - ${to12Hour(currentLecture.end)}`,
+    };
+  }
+
+  const nextLecture = WEEKDAY_TIMETABLE.find(slot => nowMinutes < toMinutes(slot.start));
+  if (nextLecture) {
+    return {
+      kicker: 'NEXT LECTURE',
+      title: nextLecture.title,
+      room: nextLecture.room,
+      time: `${to12Hour(nextLecture.start)} - ${to12Hour(nextLecture.end)}`,
+    };
+  }
+
+  return {
+    kicker: 'NO MORE LECTURES TODAY',
+    title: 'Finished',
+    room: 'Student is out of class',
+    time: 'School day has ended',
+  };
+};
+
 function LocationPinIcon() {
   return (
     <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
@@ -21,6 +96,7 @@ function LocationPinIcon() {
 
 function ParentStatusSectionComponent() {
   const pillGlass = getGlassPalette('pill');
+  const lecture = getCurrentLectureState();
 
   return (
     <View style={styles.main}>
@@ -28,8 +104,8 @@ function ParentStatusSectionComponent() {
         <ParentCrystalCenterpiece />
       </View>
 
-      <Text style={styles.kicker}>CURRENTLY ATTENDING</Text>
-      <Text style={styles.classTitle}>Arts</Text>
+      <Text style={styles.kicker}>{lecture.kicker}</Text>
+      <Text style={styles.classTitle}>{lecture.title}</Text>
 
       <View
         style={[
@@ -52,11 +128,11 @@ function ParentStatusSectionComponent() {
         <View style={[StyleSheet.absoluteFill, { backgroundColor: pillGlass.overlay }]} />
         <View style={styles.locationPillContent}>
           <LocationPinIcon />
-          <Text style={styles.locationText}>Class X B</Text>
+          <Text style={styles.locationText}>{lecture.room}</Text>
         </View>
       </View>
 
-      <Text style={styles.timeText}>10:30 AM - 11:45 AM</Text>
+      <Text style={styles.timeText}>{lecture.time}</Text>
     </View>
   );
 }
@@ -78,7 +154,7 @@ const styles = StyleSheet.create({
   kicker: {
     marginTop: 2,
     fontSize: 34 / 3,
-    letterSpacing: 6,
+    letterSpacing: 4,
     color: '#1CA37A',
     fontWeight: '800',
   },

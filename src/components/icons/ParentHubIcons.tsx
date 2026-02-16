@@ -58,27 +58,44 @@ export function HomeIcon({ active }: { active?: boolean }) {
   );
 }
 
-export function CalendarIcon() {
+export function CalendarIcon({ active }: { active?: boolean }) {
+  const stroke = active ? colors.emerald500 : '#94A3B8';
   return (
     <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
-      <Rect x={4.5} y={6.5} width={15} height={13} rx={2.2} stroke="#94A3B8" strokeWidth={2} />
-      <Path d="M8 4.5V8" stroke="#94A3B8" strokeWidth={2} strokeLinecap="round" />
-      <Path d="M16 4.5V8" stroke="#94A3B8" strokeWidth={2} strokeLinecap="round" />
-      <Path d="M4.5 10.5H19.5" stroke="#94A3B8" strokeWidth={2} />
+      <Rect x={4.5} y={6.5} width={15} height={13} rx={2.2} stroke={stroke} strokeWidth={2} />
+      <Path d="M8 4.5V8" stroke={stroke} strokeWidth={2} strokeLinecap="round" />
+      <Path d="M16 4.5V8" stroke={stroke} strokeWidth={2} strokeLinecap="round" />
+      <Path d="M4.5 10.5H19.5" stroke={stroke} strokeWidth={2} />
     </Svg>
   );
 }
 
-export function AlertIcon() {
+export function MapIcon({ active }: { active?: boolean }) {
+  const stroke = active ? colors.emerald500 : '#94A3B8';
+  return (
+    <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 19.75C10.05 17.86 6.25 13.76 6.25 10.25C6.25 7.07 8.82 4.5 12 4.5C15.18 4.5 17.75 7.07 17.75 10.25C17.75 13.76 13.95 17.86 12 19.75Z"
+        stroke={stroke}
+        strokeWidth={1.9}
+        strokeLinejoin="round"
+      />
+      <Circle cx={12} cy={10} r={2.2} stroke={stroke} strokeWidth={1.9} />
+    </Svg>
+  );
+}
+
+export function AlertIcon({ active }: { active?: boolean }) {
+  const stroke = active ? colors.emerald500 : '#94A3B8';
   return (
     <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
       <Path
         d="M12 3.75C9.1 3.75 6.75 6.1 6.75 9V11.28C6.75 12.07 6.47 12.83 5.95 13.43L4.72 14.85C4.04 15.64 4.6 16.88 5.66 16.88H18.34C19.4 16.88 19.96 15.64 19.28 14.85L18.05 13.43C17.53 12.83 17.25 12.07 17.25 11.28V9C17.25 6.1 14.9 3.75 12 3.75Z"
-        stroke="#94A3B8"
+        stroke={stroke}
         strokeWidth={1.8}
         strokeLinejoin="round"
       />
-      <Path d="M10.3 19.35C10.68 20 11.31 20.38 12 20.38C12.69 20.38 13.32 20 13.7 19.35" stroke="#94A3B8" strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M10.3 19.35C10.68 20 11.31 20.38 12 20.38C12.69 20.38 13.32 20 13.7 19.35" stroke={stroke} strokeWidth={1.8} strokeLinecap="round" />
     </Svg>
   );
 }

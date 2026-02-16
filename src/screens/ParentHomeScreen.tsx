@@ -1,16 +1,29 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, Text, View } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ParentBottomTabs } from '../components/parent-home/ParentBottomTabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ParentBottomTabs, ParentTabKey } from '../components/parent-home/ParentBottomTabs';
+import { ParentCalendarTab } from '../components/parent-home/ParentCalendarTab';
 import { ParentHeader } from '../components/parent-home/ParentHeader';
 import { ParentSidebar } from '../components/parent-home/ParentSidebar';
 import { ParentStatusSection } from '../components/parent-home/ParentStatusSection';
 
+function ComingSoonTab({ title }: { title: string }) {
+  return (
+    <View style={styles.comingSoonWrap}>
+      <Text style={styles.comingSoonTitle}>{title}</Text>
+      <Text style={styles.comingSoonText}>This tab will be added in the next step.</Text>
+    </View>
+  );
+}
+
 export function ParentHomeScreen() {
+  const insets = useSafeAreaInsets();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<ParentTabKey>('home');
   const slideX = useRef(new Animated.Value(-320)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const tabContentPhase = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -27,9 +40,37 @@ export function ParentHomeScreen() {
     ]).start();
   }, [menuOpen, overlayOpacity, slideX]);
 
+  const handleTabPress = (tab: ParentTabKey) => {
+    if (tab === activeTab) {
+      return;
+    }
+
+    Animated.timing(tabContentPhase, {
+      toValue: 0.82,
+      duration: 120,
+      useNativeDriver: true,
+    }).start(() => {
+      setActiveTab(tab);
+      Animated.spring(tabContentPhase, {
+        toValue: 1,
+        tension: 74,
+        friction: 10,
+        useNativeDriver: true,
+      }).start();
+    });
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.panel}>
+    <View style={styles.container}>
+      <View
+        style={[
+          styles.panel,
+          {
+            paddingTop: Math.max(insets.top - 6, 0),
+            paddingBottom: Math.max(insets.bottom - 4, 0),
+          },
+        ]}
+      >
         <LinearGradient
           colors={['#8FD8B5', '#BCEBD3', '#67C79D']}
           start={{ x: 0, y: 0 }}
@@ -51,11 +92,29 @@ export function ParentHomeScreen() {
 
         <ParentHeader onMenuPress={() => setMenuOpen(true)} />
 
-        <View style={styles.main}>
-          <ParentStatusSection />
-        </View>
+        <Animated.View
+          style={[
+            styles.main,
+            {
+              opacity: tabContentPhase,
+              transform: [
+                {
+                  scale: tabContentPhase.interpolate({
+                    inputRange: [0.82, 1],
+                    outputRange: [0.987, 1],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          {activeTab === 'home' ? <ParentStatusSection /> : null}
+          {activeTab === 'calendar' ? <ParentCalendarTab /> : null}
+          {activeTab === 'map' ? <ComingSoonTab title="Map" /> : null}
+          {activeTab === 'alerts' ? <ComingSoonTab title="Alerts" /> : null}
+        </Animated.View>
 
-        <ParentBottomTabs />
+        <ParentBottomTabs activeTab={activeTab} onTabPress={handleTabPress} />
       </View>
 
       <ParentSidebar
@@ -64,7 +123,7 @@ export function ParentHomeScreen() {
         slideX={slideX}
         onClose={() => setMenuOpen(false)}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -75,7 +134,6 @@ const styles = StyleSheet.create({
   },
   panel: {
     flex: 1,
-    marginHorizontal: 4,
     borderRadius: 28,
     backgroundColor: 'transparent',
     overflow: 'hidden',
@@ -83,6 +141,28 @@ const styles = StyleSheet.create({
   main: {
     flex: 1,
     paddingHorizontal: 14,
+  },
+  comingSoonWrap: {
+    flex: 1,
+    marginTop: 22,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  comingSoonTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  comingSoonText: {
+    marginTop: 8,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748B',
   },
   bgOrbOne: {
     position: 'absolute',

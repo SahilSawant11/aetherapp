@@ -61,7 +61,6 @@ export function ParentHeader({ onMenuPress }: ParentHeaderProps) {
 const styles = StyleSheet.create({
   headerWrap: {
     paddingHorizontal: 12,
-    paddingTop: 6,
     paddingBottom: 6,
   },
   headerGlass: {
