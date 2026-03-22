@@ -1,19 +1,38 @@
 import React from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Image,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import { getGlassPalette } from '../parent-home/glassTokens';
 
-type TeacherPunchTabProps = {
-  isCheckedIn: boolean;
-  lastPunchLabel: string;
-  onPunch: (isCheckedIn: boolean, label: string) => void;
+export type PunchLogItem = {
+  id: string;
+  label: string;
+  time: string;
+  status: string;
+  location: string;
 };
 
-const PUNCH_LOG = [
-  { label: 'Punch In', time: '8:14 AM', status: 'Verified' },
-  { label: 'Punch Out', time: '4:06 PM', status: 'Yesterday' },
-  { label: 'Punch In', time: '8:10 AM', status: 'Yesterday' },
-];
+type TeacherPunchTabProps = {
+  isCheckedIn: boolean;
+  isLoading: boolean;
+  isSubmitting: boolean;
+  lastPunchLabel: string;
+  shiftCountdownLabel: string | null;
+  shiftEndsLabel: string | null;
+  lastCapturedSelfieUri: string | null;
+  recentPunches: PunchLogItem[];
+  errorMessage: string | null;
+  onPunchIn: () => void;
+  onPunchOut: () => void;
+};
 
 function PunchCard({ children }: { children: React.ReactNode }) {
   const palette = getGlassPalette('header');
@@ -45,9 +64,20 @@ function PunchCard({ children }: { children: React.ReactNode }) {
 
 export function TeacherPunchTab({
   isCheckedIn,
+  isLoading,
+  isSubmitting,
   lastPunchLabel,
-  onPunch,
+  shiftCountdownLabel,
+  shiftEndsLabel,
+  lastCapturedSelfieUri,
+  recentPunches,
+  errorMessage,
+  onPunchIn,
+  onPunchOut,
 }: TeacherPunchTabProps) {
+  const punchInDisabled = isLoading || isSubmitting || isCheckedIn;
+  const punchOutDisabled = isLoading || isSubmitting || !isCheckedIn;
+
   return (
     <ScrollView
       contentContainerStyle={styles.content}
@@ -56,20 +86,34 @@ export function TeacherPunchTab({
       <PunchCard>
         <Text style={styles.sectionTitle}>Selfie punch</Text>
         <Text style={styles.sectionSubtitle}>
-          Capture-based attendance flow for staff in and out punches.
+          Capture a front-camera selfie and stamp the punch with live device coordinates.
         </Text>
 
         <View style={styles.cameraFrame}>
           <View style={styles.cameraRing}>
-            <Text style={styles.cameraHint}>Camera preview</Text>
-            <Text style={styles.cameraMeta}>Face alignment and timestamp will appear here.</Text>
+            {lastCapturedSelfieUri ? (
+              <Image source={{ uri: lastCapturedSelfieUri }} style={styles.selfiePreview} />
+            ) : null}
+            <View style={lastCapturedSelfieUri ? styles.previewOverlay : undefined}>
+              {isSubmitting ? <ActivityIndicator size="small" color="#1D4ED8" /> : null}
+              <Text style={styles.cameraHint}>
+                {lastCapturedSelfieUri ? 'Last selfie captured' : 'Camera ready'}
+              </Text>
+              <Text style={styles.cameraMeta}>
+                {lastCapturedSelfieUri
+                  ? 'A new punch will capture a fresh selfie and upload it to the backend.'
+                  : 'Punching will open the front camera and require location access.'}
+              </Text>
+            </View>
           </View>
         </View>
+
+        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
       </PunchCard>
 
       <PunchCard>
         <View style={styles.stateRow}>
-          <View>
+          <View style={styles.statusBlock}>
             <Text style={styles.statusKicker}>Current status</Text>
             <Text style={styles.statusValue}>
               {isCheckedIn ? 'Checked In' : 'Checked Out'}
@@ -83,35 +127,72 @@ export function TeacherPunchTab({
           </View>
         </View>
 
+        <View style={styles.shiftPanel}>
+          <View style={styles.shiftTile}>
+            <Text style={styles.shiftLabel}>Shift timer</Text>
+            <Text style={styles.shiftValue}>
+              {isCheckedIn ? shiftCountdownLabel ?? '08:00:00' : '08:00:00'}
+            </Text>
+          </View>
+          <View style={styles.shiftTile}>
+            <Text style={styles.shiftLabel}>Shift ends</Text>
+            <Text style={styles.shiftValue}>{shiftEndsLabel ?? '--:--'}</Text>
+          </View>
+        </View>
+
         <View style={styles.actionRow}>
           <Pressable
-            onPress={() => onPunch(true, '8:14 AM')}
-            style={[styles.actionButton, styles.primaryAction]}
+            disabled={punchInDisabled}
+            onPress={onPunchIn}
+            style={[
+              styles.actionButton,
+              styles.primaryAction,
+              punchInDisabled && styles.actionButtonDisabled,
+            ]}
           >
-            <Text style={styles.primaryText}>Punch In</Text>
+            {isSubmitting && !isCheckedIn ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.primaryText}>Punch In</Text>
+            )}
           </Pressable>
           <Pressable
-            onPress={() => onPunch(false, '4:06 PM')}
-            style={[styles.actionButton, styles.secondaryAction]}
+            disabled={punchOutDisabled}
+            onPress={onPunchOut}
+            style={[
+              styles.actionButton,
+              styles.secondaryAction,
+              punchOutDisabled && styles.actionButtonDisabled,
+            ]}
           >
-            <Text style={styles.secondaryText}>Punch Out</Text>
+            {isSubmitting && isCheckedIn ? (
+              <ActivityIndicator size="small" color="#1E3A8A" />
+            ) : (
+              <Text style={styles.secondaryText}>Punch Out</Text>
+            )}
           </Pressable>
         </View>
       </PunchCard>
 
       <PunchCard>
         <Text style={styles.sectionTitle}>Recent activity</Text>
-        <View style={styles.logColumn}>
-          {PUNCH_LOG.map(item => (
-            <View key={`${item.label}-${item.time}-${item.status}`} style={styles.logRow}>
-              <View>
-                <Text style={styles.logTitle}>{item.label}</Text>
-                <Text style={styles.logMeta}>{item.status}</Text>
+        {recentPunches.length > 0 ? (
+          <View style={styles.logColumn}>
+            {recentPunches.map(item => (
+              <View key={item.id} style={styles.logRow}>
+                <View style={styles.logTextWrap}>
+                  <Text style={styles.logTitle}>{item.label}</Text>
+                  <Text style={styles.logMeta}>
+                    {item.status} · {item.location}
+                  </Text>
+                </View>
+                <Text style={styles.logTime}>{item.time}</Text>
               </View>
-              <Text style={styles.logTime}>{item.time}</Text>
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
+        ) : (
+          <Text style={styles.emptyText}>No punch records yet.</Text>
+        )}
       </PunchCard>
     </ScrollView>
   );
@@ -163,11 +244,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(15, 23, 42, 0.08)',
+  },
+  selfiePreview: {
+    ...StyleSheet.absoluteFillObject,
+    width: undefined,
+    height: undefined,
+  },
+  previewOverlay: {
+    width: '100%',
+    minHeight: 180,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.48)',
+    paddingHorizontal: 18,
   },
   cameraHint: {
+    marginTop: 8,
     fontSize: 22,
     fontWeight: '800',
     color: '#1E3A8A',
+    textAlign: 'center',
   },
   cameraMeta: {
     marginTop: 8,
@@ -176,10 +274,21 @@ const styles = StyleSheet.create({
     color: '#64748B',
     textAlign: 'center',
   },
+  errorText: {
+    marginTop: 14,
+    color: '#B91C1C',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '600',
+  },
   stateRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
+    gap: 12,
+  },
+  statusBlock: {
+    flex: 1,
   },
   statusKicker: {
     fontSize: 11,
@@ -223,6 +332,30 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textTransform: 'uppercase',
   },
+  shiftPanel: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 18,
+  },
+  shiftTile: {
+    flex: 1,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    backgroundColor: 'rgba(255,255,255,0.56)',
+  },
+  shiftLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#64748B',
+    textTransform: 'uppercase',
+  },
+  shiftValue: {
+    marginTop: 8,
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
   actionRow: {
     flexDirection: 'row',
     gap: 10,
@@ -234,6 +367,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  actionButtonDisabled: {
+    opacity: 0.48,
   },
   primaryAction: {
     backgroundColor: '#2563EB',
@@ -259,10 +395,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 14,
+    gap: 12,
+    paddingVertical: 12,
     paddingHorizontal: 14,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.52)',
+    backgroundColor: 'rgba(255,255,255,0.48)',
+  },
+  logTextWrap: {
+    flex: 1,
   },
   logTitle: {
     fontSize: 15,
@@ -276,8 +416,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   logTime: {
-    fontSize: 14,
-    fontWeight: '800',
+    fontSize: 13,
     color: '#1D4ED8',
+    fontWeight: '800',
+  },
+  emptyText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#64748B',
   },
 });

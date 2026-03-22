@@ -6,6 +6,8 @@ import { getGlassPalette } from '../parent-home/glassTokens';
 type TeacherHomeTabProps = {
   isCheckedIn: boolean;
   lastPunchLabel: string;
+  shiftCountdownLabel: string | null;
+  shiftEndsLabel: string | null;
   onOpenPunch: () => void;
   onOpenCalendar: () => void;
 };
@@ -55,6 +57,8 @@ function GlassCard({
 export function TeacherHomeTab({
   isCheckedIn,
   lastPunchLabel,
+  shiftCountdownLabel,
+  shiftEndsLabel,
   onOpenPunch,
   onOpenCalendar,
 }: TeacherHomeTabProps) {
@@ -70,7 +74,11 @@ export function TeacherHomeTab({
         </Text>
         <Text style={styles.heroSubtitle}>
           {isCheckedIn
-            ? `Last punch recorded at ${lastPunchLabel}. Next class starts at 10:30 AM.`
+            ? `Punched in at ${lastPunchLabel}. ${
+                shiftEndsLabel
+                  ? `Shift ends at ${shiftEndsLabel} with ${shiftCountdownLabel} remaining.`
+                  : 'Your 8-hour shift timer is running.'
+              }`
             : 'Your first class starts at 08:30 AM. Capture a punch-in selfie before class.'}
         </Text>
 

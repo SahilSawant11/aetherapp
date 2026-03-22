@@ -33,8 +33,10 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>We use the camera to capture your selfie for in-punch and out-punch attendance.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>We use your location to show your current position on the map.</string>
+	<string>We use your location to stamp your in-punch and out-punch attendance records.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
