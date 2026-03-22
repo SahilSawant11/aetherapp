@@ -1,5 +1,6 @@
 import React from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 
 type ParentSidebarProps = {
   isOpen: boolean;
@@ -23,26 +24,41 @@ export function ParentSidebar({ isOpen, overlayOpacity, slideX, onClose }: Paren
         <Pressable onPress={onClose} style={styles.menuOverlayTap} />
       </Animated.View>
       <Animated.View style={[styles.sidebar, { transform: [{ translateX: slideX }] }]}>
-        <View style={styles.sidebarHeader}>
-          <View style={styles.avatarWrap}>
-            <Text style={styles.avatarText}>LS</Text>
-          </View>
-          <View>
-            <Text style={styles.sidebarTitle}>Parent Hub</Text>
-            <Text style={styles.sidebarSubtitle}>Leo Sterling</Text>
-          </View>
-        </View>
+        <LinearGradient
+          colors={['#8FD8B5', '#BCEBD3', '#67C79D']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <LinearGradient
+          colors={['rgba(5, 150, 105, 0.34)', 'rgba(5, 150, 105, 0.14)', 'rgba(5, 150, 105, 0.00)']}
+          start={{ x: 0.24, y: 0 }}
+          end={{ x: 0.78, y: 0.36 }}
+          style={StyleSheet.absoluteFill}
+        />
 
-        <SidebarItem active label="Home" />
-        <SidebarItem label="Calendar" />
-        <SidebarItem label="Attendance" />
-        <SidebarItem label="Alerts" />
-        <SidebarItem label="Settings" />
+        <View style={styles.sidebarContent}>
+          <View style={styles.sidebarHeader}>
+            <View style={styles.avatarWrap}>
+              <Text style={styles.avatarText}>LS</Text>
+            </View>
+            <View>
+              <Text style={styles.sidebarTitle}>Parent Hub</Text>
+              <Text style={styles.sidebarSubtitle}>Sahil</Text>
+            </View>
+          </View>
 
-        <View style={styles.sidebarFooter}>
-          <Pressable style={styles.closeButton} onPress={onClose}>
-            <Text style={styles.closeButtonText}>Close</Text>
-          </Pressable>
+          <SidebarItem active label="Home" />
+          <SidebarItem label="Calendar" />
+          <SidebarItem label="Attendance" />
+          <SidebarItem label="Alerts" />
+          <SidebarItem label="Settings" />
+
+          <View style={styles.sidebarFooter}>
+            <Pressable style={styles.closeButton} onPress={onClose}>
+              <Text style={styles.closeButtonText}>Close</Text>
+            </Pressable>
+          </View>
         </View>
       </Animated.View>
     </View>
@@ -63,9 +79,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     width: 290,
-    backgroundColor: '#F8FAFC',
-    paddingTop: 56,
-    paddingHorizontal: 18,
+    backgroundColor: 'transparent',
+    overflow: 'hidden',
     borderTopRightRadius: 22,
     borderBottomRightRadius: 22,
     shadowColor: '#0F172A',
@@ -73,6 +88,11 @@ const styles = StyleSheet.create({
     shadowRadius: 15,
     shadowOffset: { width: 5, height: 0 },
     elevation: 8,
+  },
+  sidebarContent: {
+    flex: 1,
+    paddingTop: 56,
+    paddingHorizontal: 18,
   },
   sidebarHeader: {
     flexDirection: 'row',

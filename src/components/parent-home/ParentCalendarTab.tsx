@@ -3,7 +3,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import { getGlassPalette } from './glassTokens';
 
-type AttendanceState = 'present' | 'absent' | 'late';
+type AttendanceState = 'present' | 'absent';
 
 type CalendarCell = {
   key: string;
@@ -17,22 +17,26 @@ const MONTH_LABELS = ['January', 'February', 'March', 'April', 'May', 'June', 'J
 const SAMPLE_ATTENDANCE: Record<string, AttendanceState> = {
   '2026-02-03': 'present',
   '2026-02-04': 'present',
-  '2026-02-05': 'late',
+  '2026-02-05': 'present',
   '2026-02-06': 'present',
   '2026-02-10': 'absent',
   '2026-02-11': 'present',
   '2026-02-12': 'present',
-  '2026-02-13': 'late',
+  '2026-02-13': 'absent',
 };
 
-const attendanceColor = (status: AttendanceState) => {
+const attendanceCellColor = (status: AttendanceState) => {
   if (status === 'present') {
-    return '#10B981';
+    return '#34D399';
   }
-  if (status === 'late') {
-    return '#F59E0B';
+  return '#FCA5A5';
+};
+
+const attendanceTextColor = (status: AttendanceState) => {
+  if (status === 'present') {
+    return '#065F46';
   }
-  return '#EF4444';
+  return '#7F1D1D';
 };
 
 const dateKeyFor = (year: number, month: number, day: number) => {
@@ -70,6 +74,13 @@ export function ParentCalendarTab() {
   const today = new Date();
 
   const cells = useMemo(() => buildCalendarGrid(year, month), [year, month]);
+  const weeks = useMemo(() => {
+    const chunks: CalendarCell[][] = [];
+    for (let i = 0; i < cells.length; i += 7) {
+      chunks.push(cells.slice(i, i + 7));
+    }
+    return chunks;
+  }, [cells]);
 
   const goToPreviousMonth = () => {
     setDisplayDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
@@ -121,35 +132,54 @@ export function ParentCalendarTab() {
       </View>
 
       <View style={styles.grid}>
-        {cells.map(cell => {
-          const isToday =
-            cell.day != null &&
-            year === today.getFullYear() &&
-            month === today.getMonth() &&
-            cell.day === today.getDate();
+        {weeks.map((week, weekIndex) => (
+          <View key={`week-${weekIndex}`} style={styles.weekRow}>
+            {week.map(cell => {
+              const isToday =
+                cell.day != null &&
+                year === today.getFullYear() &&
+                month === today.getMonth() &&
+                cell.day === today.getDate();
 
-          const status = cell.dateKey ? SAMPLE_ATTENDANCE[cell.dateKey] : undefined;
+              const status = cell.dateKey ? SAMPLE_ATTENDANCE[cell.dateKey] : undefined;
 
-          return (
-            <View key={cell.key} style={[styles.dayCell, isToday && styles.todayCell]}>
-              {cell.day != null ? <Text style={[styles.dayText, isToday && styles.todayText]}>{cell.day}</Text> : null}
-              {status ? <View style={[styles.attendanceDot, { backgroundColor: attendanceColor(status) }]} /> : null}
-            </View>
-          );
-        })}
+              return (
+                <View key={cell.key} style={styles.daySlot}>
+                  {cell.day != null ? (
+                    <View
+                      style={[
+                        styles.dayCircle,
+                        status && { backgroundColor: attendanceCellColor(status) },
+                        isToday && styles.todayCircle,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.dayText,
+                          status && { color: attendanceTextColor(status) },
+                          isToday && styles.todayText,
+                        ]}
+                      >
+                        {cell.day}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={styles.emptyCircle} />
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        ))}
       </View>
 
       <View style={styles.legendRow}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: attendanceColor('present') }]} />
+          <View style={[styles.legendSwatch, { backgroundColor: attendanceCellColor('present') }]} />
           <Text style={styles.legendLabel}>Present</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: attendanceColor('late') }]} />
-          <Text style={styles.legendLabel}>Late</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: attendanceColor('absent') }]} />
+          <View style={[styles.legendSwatch, { backgroundColor: attendanceCellColor('absent') }]} />
           <Text style={styles.legendLabel}>Absent</Text>
         </View>
       </View>
@@ -159,11 +189,15 @@ export function ParentCalendarTab() {
 
 const styles = StyleSheet.create({
   calendarWrap: {
+    flex: 1,
     marginTop: 16,
+    marginBottom: 10,
     borderRadius: 22,
     borderWidth: 1,
     overflow: 'hidden',
-    padding: 14,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 12,
     shadowOffset: { width: 0, height: 8 },
     shadowRadius: 18,
     elevation: 6,
@@ -195,7 +229,7 @@ const styles = StyleSheet.create({
   },
   weekHeaderRow: {
     flexDirection: 'row',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   weekHeaderText: {
     flex: 1,
@@ -205,50 +239,64 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flex: 1,
+    justifyContent: 'space-between',
     gap: 6,
   },
-  dayCell: {
-    width: '13.1%',
-    aspectRatio: 1,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.55)',
+  weekRow: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  daySlot: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  todayCell: {
+  dayCircle: {
+    width: '78%',
+    maxWidth: 46,
+    aspectRatio: 1,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.24)',
+    backgroundColor: 'rgba(255,255,255,0.62)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyCircle: {
+    width: '78%',
+    maxWidth: 46,
+    aspectRatio: 1,
+  },
+  todayCircle: {
     borderWidth: 2,
-    borderColor: '#10B981',
+    borderColor: '#0F766E',
   },
   dayText: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '700',
     color: '#334155',
   },
   todayText: {
-    color: '#059669',
-  },
-  attendanceDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 999,
-    marginTop: 3,
+    color: '#064E3B',
   },
   legendRow: {
-    marginTop: 14,
+    marginTop: 12,
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'center',
+    gap: 22,
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 999,
+  legendSwatch: {
+    width: 14,
+    height: 14,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.1)',
   },
   legendLabel: {
     fontSize: 12,

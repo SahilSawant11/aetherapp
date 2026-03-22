@@ -60,6 +60,19 @@ export function ParentHomeScreen() {
     });
   };
 
+  const renderMapTab = () => {
+    try {
+      const mapTabModule = require('../components/parent-home/ParentMapTab');
+      const ResolvedMapTab = mapTabModule?.ParentMapTab ?? mapTabModule?.ParentMapTan ?? mapTabModule?.default;
+      if (!ResolvedMapTab) {
+        return <ComingSoonTab title="Map" />;
+      }
+      return <ResolvedMapTab />;
+    } catch {
+      return <ComingSoonTab title="Map" />;
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View
@@ -110,7 +123,7 @@ export function ParentHomeScreen() {
         >
           {activeTab === 'home' ? <ParentStatusSection /> : null}
           {activeTab === 'calendar' ? <ParentCalendarTab /> : null}
-          {activeTab === 'map' ? <ComingSoonTab title="Map" /> : null}
+          {activeTab === 'map' ? renderMapTab() : null}
           {activeTab === 'alerts' ? <ComingSoonTab title="Alerts" /> : null}
         </Animated.View>
 
