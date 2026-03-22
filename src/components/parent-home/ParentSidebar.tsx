@@ -7,6 +7,7 @@ type ParentSidebarProps = {
   overlayOpacity: Animated.Value;
   slideX: Animated.Value;
   onClose: () => void;
+  onSignOut: () => void;
 };
 
 function SidebarItem({ active, label }: { active?: boolean; label: string }) {
@@ -17,7 +18,13 @@ function SidebarItem({ active, label }: { active?: boolean; label: string }) {
   );
 }
 
-export function ParentSidebar({ isOpen, overlayOpacity, slideX, onClose }: ParentSidebarProps) {
+export function ParentSidebar({
+  isOpen,
+  overlayOpacity,
+  slideX,
+  onClose,
+  onSignOut,
+}: ParentSidebarProps) {
   return (
     <View pointerEvents={isOpen ? 'auto' : 'none'} style={StyleSheet.absoluteFill}>
       <Animated.View style={[styles.menuOverlay, { opacity: overlayOpacity }]}>
@@ -55,6 +62,15 @@ export function ParentSidebar({ isOpen, overlayOpacity, slideX, onClose }: Paren
           <SidebarItem label="Settings" />
 
           <View style={styles.sidebarFooter}>
+            <Pressable
+              style={styles.signOutButton}
+              onPress={() => {
+                onClose();
+                onSignOut();
+              }}
+            >
+              <Text style={styles.signOutButtonText}>Sign Out</Text>
+            </Pressable>
             <Pressable style={styles.closeButton} onPress={onClose}>
               <Text style={styles.closeButtonText}>Close</Text>
             </Pressable>
@@ -143,6 +159,20 @@ const styles = StyleSheet.create({
   sidebarFooter: {
     marginTop: 'auto',
     marginBottom: 22,
+    gap: 10,
+  },
+  signOutButton: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.12)',
+    paddingVertical: 12,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.55)',
+  },
+  signOutButtonText: {
+    color: '#334155',
+    fontSize: 15,
+    fontWeight: '800',
   },
   closeButton: {
     borderRadius: 14,

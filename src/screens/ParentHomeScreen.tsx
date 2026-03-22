@@ -8,6 +8,10 @@ import { ParentHeader } from '../components/parent-home/ParentHeader';
 import { ParentSidebar } from '../components/parent-home/ParentSidebar';
 import { ParentStatusSection } from '../components/parent-home/ParentStatusSection';
 
+type ParentHomeScreenProps = {
+  onSignOut: () => void;
+};
+
 function ComingSoonTab({ title }: { title: string }) {
   return (
     <View style={styles.comingSoonWrap}>
@@ -17,7 +21,7 @@ function ComingSoonTab({ title }: { title: string }) {
   );
 }
 
-export function ParentHomeScreen() {
+export function ParentHomeScreen({ onSignOut }: ParentHomeScreenProps) {
   const insets = useSafeAreaInsets();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<ParentTabKey>('home');
@@ -135,6 +139,7 @@ export function ParentHomeScreen() {
         overlayOpacity={overlayOpacity}
         slideX={slideX}
         onClose={() => setMenuOpen(false)}
+        onSignOut={onSignOut}
       />
     </View>
   );

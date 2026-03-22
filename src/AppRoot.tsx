@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from 'react';
+import { SessionProvider, useSession } from './auth/session';
+import { SignInScreen } from './screens/SignInScreen';
+import { TeacherHomeScreen } from './screens/TeacherHomeScreen';
 import { ParentHomeScreen } from './screens/ParentHomeScreen';
 import { SplashScreen } from './screens/SplashScreen';
 
 const SPLASH_DURATION_MS = 1800;
 
-export function AppRoot() {
+function AppRootInner() {
   const [showSplash, setShowSplash] = useState(true);
+  const { user, isHydrating, signIn, signOut } = useSession();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -15,9 +19,25 @@ export function AppRoot() {
     return () => clearTimeout(timer);
   }, []);
 
-  if (showSplash) {
+  if (showSplash || isHydrating) {
     return <SplashScreen />;
   }
 
-  return <ParentHomeScreen />;
+  if (user == null) {
+    return <SignInScreen onSignIn={signIn} />;
+  }
+
+  if (user.role === 'parent') {
+    return <ParentHomeScreen onSignOut={signOut} />;
+  }
+
+  return <TeacherHomeScreen user={user} onSignOut={signOut} />;
+}
+
+export function AppRoot() {
+  return (
+    <SessionProvider>
+      <AppRootInner />
+    </SessionProvider>
+  );
 }
