@@ -11,6 +11,9 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn(() => Promise.resolve(null)),
   removeItem: jest.fn(() => Promise.resolve()),
 }));
+jest.mock('../src/lib/supabase', () => ({
+  supabase: null,
+}));
 jest.mock('react-native-linear-gradient', () => 'LinearGradient');
 jest.mock('../src/assets/models/aether-crystal.glb', () => 1, { virtual: true });
 jest.mock('react-native-filament', () => {

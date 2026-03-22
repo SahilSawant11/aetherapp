@@ -3,6 +3,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -10,54 +11,72 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  AppRole,
-  AppUser,
-  DEMO_ACCOUNTS,
-  authenticateDemoUser,
-} from '../auth/session';
+
+type AuthResult = {
+  error: string | null;
+  message?: string;
+};
 
 type SignInScreenProps = {
-  onSignIn: (user: AppUser) => void;
+  isSupabaseConfigured: boolean;
+  onSignIn: (payload: { email: string; password: string }) => Promise<AuthResult>;
+  onSignUpParent: (payload: {
+    fullName: string;
+    email: string;
+    password: string;
+  }) => Promise<AuthResult>;
 };
 
-const ROLE_COPY: Record<AppRole, string> = {
-  parent: 'Track classes, attendance, live school status, and pickup context.',
-  teacher:
-    'Manage attendance punches, today’s schedule, monthly presence, and staff alerts.',
-};
+type AuthMode = 'sign-in' | 'register-parent';
 
-const ROLE_ACCENTS: Record<AppRole, [string, string]> = {
-  parent: ['#0F766E', '#34D399'],
-  teacher: ['#1D4ED8', '#38BDF8'],
-};
+export function SignInScreen({
+  isSupabaseConfigured,
+  onSignIn,
+  onSignUpParent,
+}: SignInScreenProps) {
+  const [mode, setMode] = useState<AuthMode>('sign-in');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-export function SignInScreen({ onSignIn }: SignInScreenProps) {
-  const [role, setRole] = useState<AppRole>('parent');
-  const [email, setEmail] = useState('parent@aether.app');
-  const [password, setPassword] = useState('parent123');
-  const [error, setError] = useState<string | null>(null);
+  const clearFeedback = () => setFeedback(null);
 
-  const handleRoleChange = (nextRole: AppRole) => {
-    setRole(nextRole);
-    const account = DEMO_ACCOUNTS.find(item => item.user.role === nextRole);
-    if (account) {
-      setEmail(account.email);
-      setPassword(account.password);
-    }
-    setError(null);
-  };
+  const handleSubmit = async () => {
+    clearFeedback();
 
-  const handleSubmit = () => {
-    const matchedUser = authenticateDemoUser(email, password, role);
-    if (!matchedUser) {
-      setError('Invalid credentials for the selected role.');
+    if (mode === 'sign-in') {
+      if (!email.trim() || !password) {
+        setFeedback('Enter your email and password.');
+        return;
+      }
+
+      setSubmitting(true);
+      const result = await onSignIn({ email, password });
+      setSubmitting(false);
+      setFeedback(result.error ?? result.message ?? null);
       return;
     }
 
-    setError(null);
-    onSignIn(matchedUser);
+    if (!fullName.trim() || !email.trim() || !password || !confirmPassword) {
+      setFeedback('Complete all account creation fields.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setFeedback('Passwords do not match.');
+      return;
+    }
+
+    setSubmitting(true);
+    const result = await onSignUpParent({ fullName, email, password });
+    setSubmitting(false);
+    setFeedback(result.error ?? result.message ?? null);
   };
+
+  const feedbackIsError = feedback != null && !feedback.toLowerCase().includes('check your email');
 
   return (
     <SafeAreaView style={styles.container}>
@@ -72,88 +91,180 @@ export function SignInScreen({ onSignIn }: SignInScreenProps) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.content}
       >
-        <View>
-          <Text style={styles.kicker}>Aether Education Systems</Text>
-          <Text style={styles.title}>Sign in</Text>
-          <Text style={styles.subtitle}>
-            Select a role, enter credentials, and the app will route you into the
-            correct workspace automatically.
-          </Text>
-        </View>
+        <ScrollView
+          bounces={false}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View>
+            <Text style={styles.kicker}>Aether Education Systems</Text>
+            <Text style={styles.title}>
+              {mode === 'sign-in' ? 'Sign in' : 'Create parent account'}
+            </Text>
+            <Text style={styles.subtitle}>
+              {mode === 'sign-in'
+                ? 'Use your email and password. The app will route you based on the role attached to your Supabase account.'
+                : 'Parent registration is self-service. Teacher accounts should be created and invited by administrators.'}
+            </Text>
+          </View>
 
-        <View style={styles.formCard}>
-          <LinearGradient
-            colors={ROLE_ACCENTS[role]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.cardAccent}
-          />
+          <View style={styles.formCard}>
+            <LinearGradient
+              colors={mode === 'sign-in' ? ['#0F766E', '#34D399'] : ['#1D4ED8', '#38BDF8']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.cardAccent}
+            />
 
-          <View style={styles.roleRow}>
-            {(['parent', 'teacher'] as AppRole[]).map(option => {
-              const active = option === role;
-              return (
-                <Pressable
-                  key={option}
-                  onPress={() => handleRoleChange(option)}
-                  style={[styles.roleChip, active && styles.roleChipActive]}
+            <View style={styles.modeRow}>
+              <Pressable
+                onPress={() => {
+                  setMode('sign-in');
+                  clearFeedback();
+                }}
+                style={[styles.modeChip, mode === 'sign-in' && styles.modeChipActive]}
+              >
+                <Text
+                  style={
+                    mode === 'sign-in' ? styles.modeChipTextActive : styles.modeChipText
+                  }
                 >
-                  <Text style={active ? styles.roleChipTextActive : styles.roleChipText}>
-                    {option === 'parent' ? 'Parent' : 'Teacher'}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+                  Sign In
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  setMode('register-parent');
+                  clearFeedback();
+                }}
+                style={[
+                  styles.modeChip,
+                  mode === 'register-parent' && styles.modeChipActive,
+                ]}
+              >
+                <Text
+                  style={
+                    mode === 'register-parent'
+                      ? styles.modeChipTextActive
+                      : styles.modeChipText
+                  }
+                >
+                  Register Parent
+                </Text>
+              </Pressable>
+            </View>
 
-          <Text style={styles.cardEyebrow}>
-            {role === 'parent' ? 'Parent Hub access' : 'Teacher Workspace access'}
-          </Text>
-          <Text style={styles.cardSubtitle}>{ROLE_COPY[role]}</Text>
+            {!isSupabaseConfigured ? (
+              <View style={styles.setupPanel}>
+                <Text style={styles.setupTitle}>Supabase setup required</Text>
+                <Text style={styles.setupBody}>
+                  Add your project URL and anon key in `src/config/supabase.ts`
+                  before auth can work.
+                </Text>
+              </View>
+            ) : null}
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Email</Text>
-            <TextInput
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="email-address"
-              onChangeText={setEmail}
-              placeholder="name@aether.app"
-              placeholderTextColor="#94A3B8"
-              style={styles.input}
-              value={email}
-            />
-          </View>
+            {mode === 'register-parent' ? (
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Full Name</Text>
+                <TextInput
+                  onChangeText={text => {
+                    setFullName(text);
+                    clearFeedback();
+                  }}
+                  placeholder="Parent full name"
+                  placeholderTextColor="#94A3B8"
+                  style={styles.input}
+                  value={fullName}
+                />
+              </View>
+            ) : null}
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Password</Text>
-            <TextInput
-              autoCapitalize="none"
-              autoCorrect={false}
-              onChangeText={setPassword}
-              placeholder="Enter password"
-              placeholderTextColor="#94A3B8"
-              secureTextEntry
-              style={styles.input}
-              value={password}
-            />
-          </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Email</Text>
+              <TextInput
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                onChangeText={text => {
+                  setEmail(text);
+                  clearFeedback();
+                }}
+                placeholder="name@school.com"
+                placeholderTextColor="#94A3B8"
+                style={styles.input}
+                value={email}
+              />
+            </View>
 
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Password</Text>
+              <TextInput
+                autoCapitalize="none"
+                autoCorrect={false}
+                onChangeText={text => {
+                  setPassword(text);
+                  clearFeedback();
+                }}
+                placeholder="Enter password"
+                placeholderTextColor="#94A3B8"
+                secureTextEntry
+                style={styles.input}
+                value={password}
+              />
+            </View>
 
-          <Pressable onPress={handleSubmit} style={styles.submitButton}>
-            <Text style={styles.submitText}>Sign In</Text>
-          </Pressable>
+            {mode === 'register-parent' ? (
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Confirm Password</Text>
+                <TextInput
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  onChangeText={text => {
+                    setConfirmPassword(text);
+                    clearFeedback();
+                  }}
+                  placeholder="Re-enter password"
+                  placeholderTextColor="#94A3B8"
+                  secureTextEntry
+                  style={styles.input}
+                  value={confirmPassword}
+                />
+              </View>
+            ) : null}
 
-          <View style={styles.demoPanel}>
-            <Text style={styles.demoTitle}>Demo credentials</Text>
-            {DEMO_ACCOUNTS.map(account => (
-              <Text key={account.user.id} style={styles.demoLine}>
-                {account.user.role}: {account.email} / {account.password}
+            {feedback ? (
+              <Text style={feedbackIsError ? styles.errorText : styles.successText}>
+                {feedback}
               </Text>
-            ))}
+            ) : null}
+
+            <Pressable
+              disabled={submitting}
+              onPress={handleSubmit}
+              style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
+            >
+              <Text style={styles.submitText}>
+                {submitting
+                  ? 'Please wait...'
+                  : mode === 'sign-in'
+                    ? 'Sign In'
+                    : 'Create Account'}
+              </Text>
+            </Pressable>
+
+            <View style={styles.demoPanel}>
+              <Text style={styles.demoTitle}>Account model</Text>
+              <Text style={styles.demoLine}>
+                Parent accounts can self-register here.
+              </Text>
+              <Text style={styles.demoLine}>
+                Teacher accounts should be invited or provisioned by admin.
+              </Text>
+            </View>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -166,9 +277,12 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: 24,
     paddingTop: 52,
     paddingBottom: 28,
+    flexGrow: 1,
     justifyContent: 'space-between',
   },
   kicker: {
@@ -208,11 +322,11 @@ const styles = StyleSheet.create({
     right: 0,
     height: 6,
   },
-  roleRow: {
+  modeRow: {
     flexDirection: 'row',
     gap: 10,
   },
-  roleChip: {
+  modeChip: {
     flex: 1,
     height: 42,
     borderRadius: 14,
@@ -220,32 +334,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  roleChipActive: {
+  modeChipActive: {
     backgroundColor: '#0F172A',
   },
-  roleChipText: {
+  modeChipText: {
     color: '#475569',
     fontSize: 14,
     fontWeight: '700',
   },
-  roleChipTextActive: {
+  modeChipTextActive: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '800',
   },
-  cardEyebrow: {
-    marginTop: 18,
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#0F766E',
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
+  setupPanel: {
+    marginTop: 16,
+    borderRadius: 18,
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
   },
-  cardSubtitle: {
+  setupTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#C2410C',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+  },
+  setupBody: {
     marginTop: 8,
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#475569',
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#9A3412',
   },
   inputGroup: {
     marginTop: 16,
@@ -274,6 +394,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#B91C1C',
   },
+  successText: {
+    marginTop: 12,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F766E',
+  },
   submitButton: {
     marginTop: 18,
     height: 52,
@@ -281,6 +407,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#0F172A',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  submitButtonDisabled: {
+    opacity: 0.65,
   },
   submitText: {
     color: '#FFFFFF',

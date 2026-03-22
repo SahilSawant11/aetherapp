@@ -9,7 +9,14 @@ const SPLASH_DURATION_MS = 1800;
 
 function AppRootInner() {
   const [showSplash, setShowSplash] = useState(true);
-  const { user, isHydrating, signIn, signOut } = useSession();
+  const {
+    user,
+    isHydrating,
+    isSupabaseConfigured,
+    signInWithPassword,
+    signOut,
+    signUpParent,
+  } = useSession();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -24,7 +31,13 @@ function AppRootInner() {
   }
 
   if (user == null) {
-    return <SignInScreen onSignIn={signIn} />;
+    return (
+      <SignInScreen
+        isSupabaseConfigured={isSupabaseConfigured}
+        onSignIn={signInWithPassword}
+        onSignUpParent={signUpParent}
+      />
+    );
   }
 
   if (user.role === 'parent') {

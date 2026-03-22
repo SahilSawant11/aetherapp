@@ -1,5 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { User } from '@supabase/supabase-js';
+import { isSupabaseConfigured } from '../config/supabase';
+import { supabase } from '../lib/supabase';
 
 export type AppRole = 'parent' | 'teacher';
 
@@ -10,59 +12,86 @@ export type AppUser = {
   subtitle: string;
 };
 
+type SignInPayload = {
+  email: string;
+  password: string;
+};
+
+type ParentSignUpPayload = {
+  fullName: string;
+  email: string;
+  password: string;
+};
+
+type AuthResult = {
+  error: string | null;
+  message?: string;
+};
+
 type SessionContextValue = {
   user: AppUser | null;
   isHydrating: boolean;
-  signIn: (user: AppUser) => void;
-  signOut: () => void;
-};
-
-type DemoAccount = {
-  email: string;
-  password: string;
-  user: AppUser;
+  isSupabaseConfigured: boolean;
+  signInWithPassword: (payload: SignInPayload) => Promise<AuthResult>;
+  signUpParent: (payload: ParentSignUpPayload) => Promise<AuthResult>;
+  signOut: () => Promise<void>;
 };
 
 const SessionContext = createContext<SessionContextValue | undefined>(undefined);
-const SESSION_STORAGE_KEY = 'aether.session';
 
-export const DEMO_ACCOUNTS: DemoAccount[] = [
-  {
-    email: 'parent@aether.app',
-    password: 'parent123',
-    user: {
-      id: 'parent-sahil',
-      name: 'Sahil',
-      role: 'parent',
-      subtitle: 'Parent Hub access',
-    },
-  },
-  {
-    email: 'teacher@aether.app',
-    password: 'teacher123',
-    user: {
-      id: 'teacher-ananya',
-      name: 'Ananya Sharma',
-      role: 'teacher',
-      subtitle: 'Teacher Workspace access',
-    },
-  },
-];
+const subtitleForRole = (role: AppRole) =>
+  role === 'parent' ? 'Parent Hub access' : 'Teacher Workspace access';
 
-export function authenticateDemoUser(
-  email: string,
-  password: string,
-  role: AppRole
-): AppUser | null {
-  const normalizedEmail = email.trim().toLowerCase();
-  const matchedAccount = DEMO_ACCOUNTS.find(
-    account =>
-      account.email === normalizedEmail &&
-      account.password === password &&
-      account.user.role === role
+const normalizeRole = (value: unknown): AppRole | null => {
+  if (value === 'parent' || value === 'teacher') {
+    return value;
+  }
+  return null;
+};
+
+const fallbackNameFromEmail = (email: string | undefined) => {
+  if (!email) {
+    return 'Aether User';
+  }
+  return email.split('@')[0] ?? 'Aether User';
+};
+
+async function resolveAppUser(authUser: User): Promise<AppUser | null> {
+  let profileName: string | null = null;
+  let profileRole: AppRole | null = null;
+
+  if (supabase) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('full_name, role')
+      .eq('id', authUser.id)
+      .maybeSingle();
+
+    profileName =
+      typeof data?.full_name === 'string' ? data.full_name : null;
+    profileRole = normalizeRole(data?.role);
+  }
+
+  const metadataRole = normalizeRole(
+    authUser.user_metadata?.role ?? authUser.app_metadata?.role
   );
+  const role = profileRole ?? metadataRole;
 
-  return matchedAccount?.user ?? null;
+  if (!role) {
+    return null;
+  }
+
+  const metadataName =
+    typeof authUser.user_metadata?.full_name === 'string'
+      ? authUser.user_metadata.full_name
+      : null;
+
+  return {
+    id: authUser.id,
+    name: profileName ?? metadataName ?? fallbackNameFromEmail(authUser.email),
+    role,
+    subtitle: subtitleForRole(role),
+  };
 }
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
@@ -70,37 +99,102 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [isHydrating, setIsHydrating] = useState(true);
 
   useEffect(() => {
-    const restoreSession = async () => {
-      try {
-        const stored = await AsyncStorage.getItem(SESSION_STORAGE_KEY);
-        if (stored) {
-          setUser(JSON.parse(stored) as AppUser);
-        }
-      } catch {
+    if (!supabase || !isSupabaseConfigured) {
+      setIsHydrating(false);
+      return;
+    }
+
+    const syncSession = async (nextUser: User | null) => {
+      if (!nextUser) {
         setUser(null);
-      } finally {
-        setIsHydrating(false);
+        return;
       }
+
+      const resolvedUser = await resolveAppUser(nextUser);
+      setUser(resolvedUser);
     };
 
-    restoreSession().catch(() => {
-      setIsHydrating(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(async ({ data }) => {
+        await syncSession(data.session?.user ?? null);
+        setIsHydrating(false);
+      })
+      .catch(() => {
+        setUser(null);
+        setIsHydrating(false);
+      });
+
+    const { data: subscription } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        syncSession(session?.user ?? null).catch(() => {
+          setUser(null);
+        });
+      }
+    );
+
+    return () => {
+      subscription.subscription.unsubscribe();
+    };
   }, []);
 
-  const value = useMemo(
+  const value = useMemo<SessionContextValue>(
     () => ({
       user,
       isHydrating,
-      signIn: (nextUser: AppUser) => {
-        setUser(nextUser);
-        AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextUser)).catch(
-          () => {}
-        );
+      isSupabaseConfigured,
+      signInWithPassword: async ({ email, password }) => {
+        if (!supabase || !isSupabaseConfigured) {
+          return {
+            error:
+              'Supabase is not configured yet. Add your project URL and anon key in src/config/supabase.ts.',
+          };
+        }
+
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+
+        return { error: error?.message ?? null };
       },
-      signOut: () => {
+      signUpParent: async ({ fullName, email, password }) => {
+        if (!supabase || !isSupabaseConfigured) {
+          return {
+            error:
+              'Supabase is not configured yet. Add your project URL and anon key in src/config/supabase.ts.',
+          };
+        }
+
+        const { error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            data: {
+              full_name: fullName.trim(),
+              role: 'parent',
+            },
+          },
+        });
+
+        if (error) {
+          return { error: error.message };
+        }
+
+        return {
+          error: null,
+          message:
+            'Account created. Check your email for the Supabase confirmation link.',
+        };
+      },
+      signOut: async () => {
+        if (!supabase || !isSupabaseConfigured) {
+          setUser(null);
+          return;
+        }
+
+        await supabase.auth.signOut();
         setUser(null);
-        AsyncStorage.removeItem(SESSION_STORAGE_KEY).catch(() => {});
       },
     }),
     [isHydrating, user]
