@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { BlurView } from '@react-native-community/blur';
-import { getGlassPalette } from './glassTokens';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { SurfaceCard } from '../ui/SurfaceCard';
 
 type AttendanceState = 'present' | 'absent';
 
@@ -67,7 +66,6 @@ const buildCalendarGrid = (year: number, month: number): CalendarCell[] => {
 
 export function ParentCalendarTab() {
   const [displayDate, setDisplayDate] = useState(() => new Date());
-  const panelGlass = getGlassPalette('header');
 
   const year = displayDate.getFullYear();
   const month = displayDate.getMonth();
@@ -91,26 +89,7 @@ export function ParentCalendarTab() {
   };
 
   return (
-    <View
-      style={[
-        styles.calendarWrap,
-        {
-          borderColor: panelGlass.border,
-          backgroundColor: panelGlass.fallback,
-          shadowColor: panelGlass.shadowColor,
-          shadowOpacity: panelGlass.shadowOpacity,
-        },
-      ]}
-    >
-      <BlurView
-        blurType={Platform.OS === 'ios' ? panelGlass.blurType : 'light'}
-        blurAmount={panelGlass.blurAmount}
-        overlayColor={Platform.OS === 'android' ? 'rgba(0,0,0,0)' : undefined}
-        reducedTransparencyFallbackColor={panelGlass.fallback}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: panelGlass.overlay }]} />
-
+    <SurfaceCard style={styles.calendarWrap}>
       <View style={styles.headerRow}>
         <Pressable onPress={goToPreviousMonth} style={styles.monthNavBtn}>
           <Text style={styles.monthNavText}>{'<'}</Text>
@@ -183,7 +162,7 @@ export function ParentCalendarTab() {
           <Text style={styles.legendLabel}>Absent</Text>
         </View>
       </View>
-    </View>
+    </SurfaceCard>
   );
 }
 
@@ -192,15 +171,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginTop: 16,
     marginBottom: 10,
-    borderRadius: 22,
-    borderWidth: 1,
-    overflow: 'hidden',
-    paddingHorizontal: 14,
-    paddingTop: 14,
-    paddingBottom: 12,
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 18,
-    elevation: 6,
   },
   headerRow: {
     flexDirection: 'row',
@@ -212,7 +182,9 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.55)',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#D8E2EE',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -258,8 +230,8 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.24)',
-    backgroundColor: 'rgba(255,255,255,0.62)',
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -269,38 +241,37 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
   },
   todayCircle: {
+    borderColor: '#10B981',
     borderWidth: 2,
-    borderColor: '#0F766E',
   },
   dayText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: '#334155',
   },
   todayText: {
-    color: '#064E3B',
+    color: '#065F46',
+    fontWeight: '800',
   },
   legendRow: {
-    marginTop: 12,
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 22,
+    gap: 18,
+    marginTop: 14,
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   legendSwatch: {
-    width: 14,
-    height: 14,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.1)',
+    width: 10,
+    height: 10,
+    borderRadius: 999,
   },
   legendLabel: {
     fontSize: 12,
-    color: '#475569',
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#64748B',
   },
 });

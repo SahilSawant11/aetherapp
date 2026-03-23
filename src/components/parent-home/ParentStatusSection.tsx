@@ -1,9 +1,7 @@
 import React, { memo } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
-import { BlurView } from '@react-native-community/blur';
+import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { ParentCrystalCenterpiece } from './ParentCrystalCenterpiece';
-import { getGlassPalette } from './glassTokens';
+import { SurfaceCard } from '../ui/SurfaceCard';
 
 type LectureSlot = {
   title: string;
@@ -39,7 +37,7 @@ const getCurrentLectureState = () => {
   const day = now.getDay();
   if (day === 0 || day === 6) {
     return {
-      kicker: 'NO CLASSES TODAY',
+      kicker: 'No classes today',
       title: 'Weekend',
       room: 'School closed',
       time: 'Check calendar for attendance records',
@@ -55,7 +53,7 @@ const getCurrentLectureState = () => {
 
   if (currentLecture) {
     return {
-      kicker: 'CURRENTLY ATTENDING',
+      kicker: 'Currently attending',
       title: currentLecture.title,
       room: currentLecture.room,
       time: `${to12Hour(currentLecture.start)} - ${to12Hour(currentLecture.end)}`,
@@ -65,7 +63,7 @@ const getCurrentLectureState = () => {
   const nextLecture = WEEKDAY_TIMETABLE.find(slot => nowMinutes < toMinutes(slot.start));
   if (nextLecture) {
     return {
-      kicker: 'NEXT LECTURE',
+      kicker: 'Next lecture',
       title: nextLecture.title,
       room: nextLecture.room,
       time: `${to12Hour(nextLecture.start)} - ${to12Hour(nextLecture.end)}`,
@@ -73,7 +71,7 @@ const getCurrentLectureState = () => {
   }
 
   return {
-    kicker: 'NO MORE LECTURES TODAY',
+    kicker: 'No more lectures today',
     title: 'Finished',
     room: 'Student is out of class',
     time: 'School day has ended',
@@ -95,44 +93,46 @@ function LocationPinIcon() {
 }
 
 function ParentStatusSectionComponent() {
-  const pillGlass = getGlassPalette('pill');
   const lecture = getCurrentLectureState();
 
   return (
     <View style={styles.main}>
-      <View style={styles.heroWrap}>
-        <ParentCrystalCenterpiece />
-      </View>
-
-      <Text style={styles.kicker}>{lecture.kicker}</Text>
-      <Text style={styles.classTitle}>{lecture.title}</Text>
-
-      <View
-        style={[
-          styles.locationPill,
-          {
-            backgroundColor: pillGlass.fallback,
-            borderColor: pillGlass.border,
-            shadowColor: pillGlass.shadowColor,
-            shadowOpacity: pillGlass.shadowOpacity,
-          },
-        ]}
-      >
-        <BlurView
-          blurType={Platform.OS === 'ios' ? pillGlass.blurType : 'light'}
-          blurAmount={pillGlass.blurAmount}
-          overlayColor={Platform.OS === 'android' ? 'rgba(0,0,0,0)' : undefined}
-          reducedTransparencyFallbackColor={pillGlass.fallback}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: pillGlass.overlay }]} />
-        <View style={styles.locationPillContent}>
+      <SurfaceCard tone="accent" accentColor="#059669">
+        <Text style={styles.kicker}>{lecture.kicker}</Text>
+        <Text style={styles.classTitle}>{lecture.title}</Text>
+        <View style={styles.locationPill}>
           <LocationPinIcon />
           <Text style={styles.locationText}>{lecture.room}</Text>
         </View>
-      </View>
+        <Text style={styles.timeText}>{lecture.time}</Text>
+      </SurfaceCard>
 
-      <Text style={styles.timeText}>{lecture.time}</Text>
+      <SurfaceCard>
+        <Text style={styles.sectionTitle}>Today at a glance</Text>
+        <View style={styles.row}>
+          <View style={styles.tile}>
+            <Text style={styles.tileValue}>08:30</Text>
+            <Text style={styles.tileLabel}>Started</Text>
+          </View>
+          <View style={styles.tile}>
+            <Text style={styles.tileValue}>14:45</Text>
+            <Text style={styles.tileLabel}>Pickup</Text>
+          </View>
+          <View style={styles.tile}>
+            <Text style={styles.tileValue}>2</Text>
+            <Text style={styles.tileLabel}>Alerts</Text>
+          </View>
+        </View>
+      </SurfaceCard>
+
+      <SurfaceCard tone="muted">
+        <Text style={styles.sectionTitle}>Parent actions</Text>
+        <View style={styles.actionList}>
+          <Text style={styles.actionItem}>Report an absence</Text>
+          <Text style={styles.actionItem}>Update pickup contact</Text>
+          <Text style={styles.actionItem}>Send a message to school</Text>
+        </View>
+      </SurfaceCard>
     </View>
   );
 }
@@ -142,56 +142,82 @@ export const ParentStatusSection = memo(ParentStatusSectionComponent);
 const styles = StyleSheet.create({
   main: {
     width: '100%',
-    alignItems: 'center',
     paddingTop: 18,
-  },
-  heroWrap: {
-    width: '100%',
-    minHeight: 328,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 14,
   },
   kicker: {
-    marginTop: 2,
-    fontSize: 34 / 3,
-    letterSpacing: 4,
-    color: '#1CA37A',
+    fontSize: 12,
+    letterSpacing: 1.8,
+    color: '#059669',
     fontWeight: '800',
+    textTransform: 'uppercase',
   },
   classTitle: {
     marginTop: 14,
-    fontSize: 60 / 3,
-    lineHeight: 66 / 3,
+    fontSize: 28,
+    lineHeight: 34,
     color: '#0F172A',
-    fontWeight: '500',
+    fontWeight: '800',
   },
   locationPill: {
     marginTop: 18,
-    paddingHorizontal: 26,
-    height: 74,
-    borderRadius: 28,
-    borderWidth: 1,
-    overflow: 'hidden',
-    justifyContent: 'center',
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-  },
-  locationPillContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    paddingHorizontal: 18,
+    height: 54,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    backgroundColor: '#F0FDF4',
   },
   locationText: {
-    fontSize: 18,
+    fontSize: 16,
     color: '#34445F',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   timeText: {
     marginTop: 16,
     fontSize: 13,
     letterSpacing: 1,
-    color: '#8A9AB5',
+    color: '#64748B',
     fontWeight: '700',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 16,
+  },
+  tile: {
+    flex: 1,
+    borderRadius: 16,
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+  },
+  tileValue: {
+    fontSize: 21,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  tileLabel: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  actionList: {
+    marginTop: 14,
+    gap: 12,
+  },
+  actionItem: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#334155',
   },
 });

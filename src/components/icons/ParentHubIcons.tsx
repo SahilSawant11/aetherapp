@@ -48,8 +48,13 @@ export function ClockIcon() {
   );
 }
 
-export function HomeIcon({ active }: { active?: boolean }) {
-  const stroke = active ? colors.emerald500 : '#94A3B8';
+type ActiveIconProps = {
+  active?: boolean;
+  activeColor?: string;
+};
+
+export function HomeIcon({ active, activeColor = colors.emerald500 }: ActiveIconProps) {
+  const stroke = active ? activeColor : '#94A3B8';
   return (
     <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
       <Path d="M4.75 10.85L12 5L19.25 10.85V19.25H4.75V10.85Z" stroke={stroke} strokeWidth={2} strokeLinejoin="round" />
@@ -58,8 +63,8 @@ export function HomeIcon({ active }: { active?: boolean }) {
   );
 }
 
-export function CalendarIcon({ active }: { active?: boolean }) {
-  const stroke = active ? colors.emerald500 : '#94A3B8';
+export function CalendarIcon({ active, activeColor = colors.emerald500 }: ActiveIconProps) {
+  const stroke = active ? activeColor : '#94A3B8';
   return (
     <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
       <Rect x={4.5} y={6.5} width={15} height={13} rx={2.2} stroke={stroke} strokeWidth={2} />
@@ -70,8 +75,8 @@ export function CalendarIcon({ active }: { active?: boolean }) {
   );
 }
 
-export function MapIcon({ active }: { active?: boolean }) {
-  const stroke = active ? colors.emerald500 : '#94A3B8';
+export function MapIcon({ active, activeColor = colors.emerald500 }: ActiveIconProps) {
+  const stroke = active ? activeColor : '#94A3B8';
   return (
     <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
       <Path
@@ -85,8 +90,8 @@ export function MapIcon({ active }: { active?: boolean }) {
   );
 }
 
-export function AlertIcon({ active }: { active?: boolean }) {
-  const stroke = active ? colors.emerald500 : '#94A3B8';
+export function AlertIcon({ active, activeColor = colors.emerald500 }: ActiveIconProps) {
+  const stroke = active ? activeColor : '#94A3B8';
   return (
     <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
       <Path

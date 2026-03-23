@@ -2,21 +2,47 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ParentBottomTabs, ParentTabKey } from '../components/parent-home/ParentBottomTabs';
+import { AlertIcon, CalendarIcon, HomeIcon } from '../components/icons/ParentHubIcons';
 import { ParentCalendarTab } from '../components/parent-home/ParentCalendarTab';
-import { ParentHeader } from '../components/parent-home/ParentHeader';
 import { ParentSidebar } from '../components/parent-home/ParentSidebar';
 import { ParentStatusSection } from '../components/parent-home/ParentStatusSection';
+import { AppBottomTabs, AppTabItem } from '../components/ui/AppBottomTabs';
+import { AppHeader } from '../components/ui/AppHeader';
+import { SurfaceCard } from '../components/ui/SurfaceCard';
 
 type ParentHomeScreenProps = {
   onSignOut: () => void;
 };
 
-function ComingSoonTab({ title }: { title: string }) {
+const PARENT_TABS: Array<AppTabItem<'today' | 'timeline' | 'alerts'>> = [
+  {
+    key: 'today',
+    label: 'Today',
+    renderIcon: (active, color) => <HomeIcon active={active} activeColor={color} />,
+  },
+  {
+    key: 'timeline',
+    label: 'Timeline',
+    renderIcon: (active, color) => <CalendarIcon active={active} activeColor={color} />,
+  },
+  {
+    key: 'alerts',
+    label: 'Alerts',
+    renderIcon: (active, color) => <AlertIcon active={active} activeColor={color} />,
+  },
+];
+
+function ParentAlertsTab() {
   return (
-    <View style={styles.comingSoonWrap}>
-      <Text style={styles.comingSoonTitle}>{title}</Text>
-      <Text style={styles.comingSoonText}>This tab will be added in the next step.</Text>
+    <View style={styles.alertsWrap}>
+      <SurfaceCard tone="accent" accentColor="#059669">
+        <Text style={styles.alertTitle}>Pickup reminder</Text>
+        <Text style={styles.alertBody}>Rahul&apos;s bus route reaches the gate at 2:45 PM today.</Text>
+      </SurfaceCard>
+      <SurfaceCard>
+        <Text style={styles.alertTitle}>School notice</Text>
+        <Text style={styles.alertBody}>Math notebooks should be submitted by Wednesday morning.</Text>
+      </SurfaceCard>
     </View>
   );
 }
@@ -24,7 +50,7 @@ function ComingSoonTab({ title }: { title: string }) {
 export function ParentHomeScreen({ onSignOut }: ParentHomeScreenProps) {
   const insets = useSafeAreaInsets();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<ParentTabKey>('home');
+  const [activeTab, setActiveTab] = useState<'today' | 'timeline' | 'alerts'>('today');
   const slideX = useRef(new Animated.Value(-320)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const tabContentPhase = useRef(new Animated.Value(1)).current;
@@ -44,13 +70,13 @@ export function ParentHomeScreen({ onSignOut }: ParentHomeScreenProps) {
     ]).start();
   }, [menuOpen, overlayOpacity, slideX]);
 
-  const handleTabPress = (tab: ParentTabKey) => {
+  const handleTabPress = (tab: 'today' | 'timeline' | 'alerts') => {
     if (tab === activeTab) {
       return;
     }
 
     Animated.timing(tabContentPhase, {
-      toValue: 0.82,
+      toValue: 0.96,
       duration: 120,
       useNativeDriver: true,
     }).start(() => {
@@ -64,50 +90,38 @@ export function ParentHomeScreen({ onSignOut }: ParentHomeScreenProps) {
     });
   };
 
-  const renderMapTab = () => {
-    try {
-      const mapTabModule = require('../components/parent-home/ParentMapTab');
-      const ResolvedMapTab = mapTabModule?.ParentMapTab ?? mapTabModule?.ParentMapTan ?? mapTabModule?.default;
-      if (!ResolvedMapTab) {
-        return <ComingSoonTab title="Map" />;
-      }
-      return <ResolvedMapTab />;
-    } catch {
-      return <ComingSoonTab title="Map" />;
-    }
-  };
-
   return (
     <View style={styles.container}>
       <View
         style={[
           styles.panel,
           {
-            paddingTop: Math.max(insets.top - 6, 0),
-            paddingBottom: Math.max(insets.bottom - 4, 0),
+            paddingTop: Math.max(insets.top - 2, 0),
+            paddingBottom: Math.max(insets.bottom - 2, 0),
           },
         ]}
       >
         <LinearGradient
-          colors={['#8FD8B5', '#BCEBD3', '#67C79D']}
+          colors={['#F3FBF7', '#F7FCFA', '#EEF9F3']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
         <LinearGradient
-          colors={['rgba(5, 150, 105, 0.34)', 'rgba(5, 150, 105, 0.14)', 'rgba(5, 150, 105, 0.00)']}
-          start={{ x: 0.24, y: 0 }}
-          end={{ x: 0.78, y: 0.36 }}
-          style={styles.topTint}
+          colors={['rgba(5, 150, 105, 0.12)', 'rgba(5, 150, 105, 0.06)', 'rgba(5, 150, 105, 0.00)']}
+          start={{ x: 0.14, y: 0 }}
+          end={{ x: 0.82, y: 0.42 }}
+          style={StyleSheet.absoluteFill}
         />
-        <View style={styles.bgOrbOne} />
-        <View style={styles.bgOrbTwo} />
-        <View style={styles.bgOrbTopGlass} />
-        <View style={styles.bgOrbBottomGlass} />
-        <View style={styles.bgOrbHeaderFocus} />
-        <View style={styles.bgOrbFooterFocus} />
 
-        <ParentHeader onMenuPress={() => setMenuOpen(true)} />
+        <AppHeader
+          title="Sahil"
+          subtitle="Active session"
+          avatarLabel="SA"
+          accentColor="#059669"
+          alertCount={2}
+          onMenuPress={() => setMenuOpen(true)}
+        />
 
         <Animated.View
           style={[
@@ -117,21 +131,25 @@ export function ParentHomeScreen({ onSignOut }: ParentHomeScreenProps) {
               transform: [
                 {
                   scale: tabContentPhase.interpolate({
-                    inputRange: [0.82, 1],
-                    outputRange: [0.987, 1],
+                    inputRange: [0.96, 1],
+                    outputRange: [0.99, 1],
                   }),
                 },
               ],
             },
           ]}
         >
-          {activeTab === 'home' ? <ParentStatusSection /> : null}
-          {activeTab === 'calendar' ? <ParentCalendarTab /> : null}
-          {activeTab === 'map' ? renderMapTab() : null}
-          {activeTab === 'alerts' ? <ComingSoonTab title="Alerts" /> : null}
+          {activeTab === 'today' ? <ParentStatusSection /> : null}
+          {activeTab === 'timeline' ? <ParentCalendarTab /> : null}
+          {activeTab === 'alerts' ? <ParentAlertsTab /> : null}
         </Animated.View>
 
-        <ParentBottomTabs activeTab={activeTab} onTabPress={handleTabPress} />
+        <AppBottomTabs
+          activeTab={activeTab}
+          items={PARENT_TABS}
+          activeColor="#059669"
+          onTabPress={handleTabPress}
+        />
       </View>
 
       <ParentSidebar
@@ -148,95 +166,30 @@ export function ParentHomeScreen({ onSignOut }: ParentHomeScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#EDEFF2',
+    backgroundColor: '#F2F8F4',
   },
   panel: {
     flex: 1,
-    borderRadius: 28,
     backgroundColor: 'transparent',
     overflow: 'hidden',
   },
   main: {
     flex: 1,
-    paddingHorizontal: 14,
-  },
-  comingSoonWrap: {
-    flex: 1,
-    marginTop: 22,
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.55)',
-    alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: 16,
   },
-  comingSoonTitle: {
-    fontSize: 22,
+  alertsWrap: {
+    paddingTop: 18,
+    gap: 14,
+  },
+  alertTitle: {
+    fontSize: 18,
     fontWeight: '800',
     color: '#0F172A',
   },
-  comingSoonText: {
+  alertBody: {
     marginTop: 8,
     fontSize: 14,
-    fontWeight: '600',
-    color: '#64748B',
-  },
-  bgOrbOne: {
-    position: 'absolute',
-    top: -20,
-    right: -36,
-    width: 210,
-    height: 210,
-    borderRadius: 210,
-    backgroundColor: 'rgba(5, 150, 105, 0.46)',
-  },
-  bgOrbTwo: {
-    position: 'absolute',
-    bottom: 58,
-    left: -50,
-    width: 220,
-    height: 220,
-    borderRadius: 220,
-    backgroundColor: 'rgba(4, 120, 87, 0.48)',
-  },
-  topTint: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  bgOrbTopGlass: {
-    position: 'absolute',
-    top: -36,
-    left: 70,
-    width: 250,
-    height: 180,
-    borderRadius: 220,
-    backgroundColor: 'rgba(34, 197, 94, 0.40)',
-  },
-  bgOrbBottomGlass: {
-    position: 'absolute',
-    bottom: -26,
-    right: -38,
-    width: 260,
-    height: 190,
-    borderRadius: 230,
-    backgroundColor: 'rgba(16, 185, 129, 0.42)',
-  },
-  bgOrbHeaderFocus: {
-    position: 'absolute',
-    top: -52,
-    right: 16,
-    width: 280,
-    height: 180,
-    borderRadius: 220,
-    backgroundColor: 'rgba(20, 184, 166, 0.34)',
-  },
-  bgOrbFooterFocus: {
-    position: 'absolute',
-    bottom: -34,
-    left: 40,
-    width: 300,
-    height: 200,
-    borderRadius: 240,
-    backgroundColor: 'rgba(52, 211, 153, 0.34)',
+    lineHeight: 21,
+    color: '#475569',
   },
 });

@@ -1,7 +1,6 @@
 import React from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { BlurView } from '@react-native-community/blur';
-import { getGlassPalette } from '../parent-home/glassTokens';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SurfaceCard } from '../ui/SurfaceCard';
 
 type TeacherHomeTabProps = {
   isCheckedIn: boolean;
@@ -19,41 +18,6 @@ const TODAY_SLOTS = [
   { time: '14:00', title: 'Planning', section: 'Faculty', room: 'Staff Room' },
 ];
 
-function GlassCard({
-  children,
-  style,
-}: {
-  children: React.ReactNode;
-  style?: object;
-}) {
-  const palette = getGlassPalette('header');
-
-  return (
-    <View
-      style={[
-        styles.card,
-        style,
-        {
-          borderColor: palette.border,
-          backgroundColor: palette.fallback,
-          shadowColor: palette.shadowColor,
-          shadowOpacity: palette.shadowOpacity,
-        },
-      ]}
-    >
-      <BlurView
-        blurType={Platform.OS === 'ios' ? palette.blurType : 'light'}
-        blurAmount={palette.blurAmount}
-        overlayColor={Platform.OS === 'android' ? 'rgba(0,0,0,0)' : undefined}
-        reducedTransparencyFallbackColor={palette.fallback}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: palette.overlay }]} />
-      <View style={styles.cardContent}>{children}</View>
-    </View>
-  );
-}
-
 export function TeacherHomeTab({
   isCheckedIn,
   lastPunchLabel,
@@ -63,33 +27,30 @@ export function TeacherHomeTab({
   onOpenCalendar,
 }: TeacherHomeTabProps) {
   return (
-    <ScrollView
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
-      <GlassCard style={styles.heroCard}>
-        <Text style={styles.kicker}>Teacher Operations</Text>
+    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <SurfaceCard style={styles.heroCard} tone="accent" accentColor="#2563EB">
+        <Text style={styles.kicker}>Today</Text>
         <Text style={styles.heroTitle}>
-          {isCheckedIn ? 'You are live for the day.' : 'Punch in to start your shift.'}
+          {isCheckedIn ? 'You are checked in and ready.' : 'Start the day with one quick punch.'}
         </Text>
         <Text style={styles.heroSubtitle}>
           {isCheckedIn
             ? `Punched in at ${lastPunchLabel}. ${
                 shiftEndsLabel
-                  ? `Shift ends at ${shiftEndsLabel} with ${shiftCountdownLabel} remaining.`
-                  : 'Your 8-hour shift timer is running.'
+                  ? `Shift ends at ${shiftEndsLabel}. ${shiftCountdownLabel} remaining.`
+                  : 'Your shift timer is running.'
               }`
-            : 'Your first class starts at 08:30 AM. Capture a punch-in selfie before class.'}
+            : 'Your first class starts at 08:30 AM. Capture a selfie punch before class begins.'}
         </Text>
 
         <View style={styles.heroStats}>
           <View style={styles.statTile}>
             <Text style={styles.statValue}>4</Text>
-            <Text style={styles.statLabel}>Classes Today</Text>
+            <Text style={styles.statLabel}>Classes</Text>
           </View>
           <View style={styles.statTile}>
             <Text style={styles.statValue}>2</Text>
-            <Text style={styles.statLabel}>Completed</Text>
+            <Text style={styles.statLabel}>Done</Text>
           </View>
           <View style={styles.statTile}>
             <Text style={styles.statValue}>3</Text>
@@ -99,17 +60,17 @@ export function TeacherHomeTab({
 
         <View style={styles.actionRow}>
           <Pressable onPress={onOpenPunch} style={[styles.actionButton, styles.primaryAction]}>
-            <Text style={styles.primaryActionText}>Open Punch</Text>
+            <Text style={styles.primaryActionText}>Open Attendance</Text>
           </Pressable>
           <Pressable onPress={onOpenCalendar} style={styles.actionButton}>
-            <Text style={styles.secondaryActionText}>Attendance</Text>
+            <Text style={styles.secondaryActionText}>View Alerts</Text>
           </Pressable>
         </View>
-      </GlassCard>
+      </SurfaceCard>
 
-      <GlassCard>
+      <SurfaceCard>
         <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>Today&apos;s schedule</Text>
+          <Text style={styles.sectionTitle}>Next up</Text>
           <Text style={styles.sectionMeta}>08:30 AM to 02:45 PM</Text>
         </View>
 
@@ -132,7 +93,7 @@ export function TeacherHomeTab({
             </View>
           ))}
         </View>
-      </GlassCard>
+      </SurfaceCard>
     </ScrollView>
   );
 }
@@ -143,26 +104,14 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     gap: 14,
   },
-  card: {
-    borderRadius: 24,
-    borderWidth: 1,
-    overflow: 'hidden',
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 18,
-    elevation: 6,
-  },
-  cardContent: {
-    paddingHorizontal: 18,
-    paddingVertical: 18,
-  },
   heroCard: {
-    minHeight: 250,
+    minHeight: 230,
   },
   kicker: {
     fontSize: 12,
     fontWeight: '800',
-    letterSpacing: 2.4,
-    color: '#0284C7',
+    letterSpacing: 1.8,
+    color: '#2563EB',
     textTransform: 'uppercase',
   },
   heroTitle: {
@@ -185,8 +134,8 @@ const styles = StyleSheet.create({
   },
   statTile: {
     flex: 1,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.54)',
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.72)',
     paddingVertical: 14,
     paddingHorizontal: 10,
   },
@@ -210,12 +159,15 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 46,
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#D8E2EE',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.56)',
+    backgroundColor: '#F8FAFC',
   },
   primaryAction: {
     backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
   },
   primaryActionText: {
     color: '#FFFFFF',
@@ -252,10 +204,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 14,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.52)',
+    backgroundColor: '#F8FAFC',
   },
   scheduleRowActive: {
-    backgroundColor: 'rgba(191, 219, 254, 0.70)',
+    backgroundColor: '#DBEAFE',
   },
   timeBlock: {
     width: 58,

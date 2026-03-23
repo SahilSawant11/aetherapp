@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, LayoutChangeEvent, PanResponder, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import { AlertIcon, CalendarIcon, HomeIcon, MapIcon } from '../icons/ParentHubIcons';
@@ -42,7 +42,10 @@ export function ParentBottomTabs({ activeTab, onTabPress }: ParentBottomTabsProp
   const minX = TAB_BAR_HORIZONTAL_PADDING;
   const maxX = TAB_BAR_HORIZONTAL_PADDING + Math.max(0, innerWidth - chipWidth);
 
-  const xForIndex = (index: number) => TAB_BAR_HORIZONTAL_PADDING + slotWidth * index;
+  const xForIndex = useCallback(
+    (index: number) => TAB_BAR_HORIZONTAL_PADDING + slotWidth * index,
+    [slotWidth]
+  );
 
   useEffect(() => {
     const id = chipTranslateX.addListener(({ value }) => {
@@ -64,41 +67,47 @@ export function ParentBottomTabs({ activeTab, onTabPress }: ParentBottomTabsProp
       friction: 11,
       useNativeDriver: true,
     }).start();
-  }, [activeIndex, chipTranslateX, slotWidth]);
+  }, [activeIndex, chipTranslateX, slotWidth, xForIndex]);
 
-  const triggerRippleAtIndex = (index: number) => {
-    if (slotWidth <= 0) {
-      return;
-    }
+  const triggerRippleAtIndex = useCallback(
+    (index: number) => {
+      if (slotWidth <= 0) {
+        return;
+      }
 
-    const size = Math.max(26, Math.min(42, slotWidth * 0.36));
-    const centerX = xForIndex(index) + slotWidth / 2;
-    setRippleSize(size);
-    setRippleLeft(centerX - size / 2);
+      const size = Math.max(26, Math.min(42, slotWidth * 0.36));
+      const centerX = xForIndex(index) + slotWidth / 2;
+      setRippleSize(size);
+      setRippleLeft(centerX - size / 2);
 
-    rippleScale.setValue(0.2);
-    rippleOpacity.setValue(0.36);
-    Animated.parallel([
-      Animated.timing(rippleScale, {
-        toValue: 1.8,
-        duration: 260,
-        useNativeDriver: true,
-      }),
-      Animated.timing(rippleOpacity, {
-        toValue: 0,
-        duration: 320,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
+      rippleScale.setValue(0.2);
+      rippleOpacity.setValue(0.36);
+      Animated.parallel([
+        Animated.timing(rippleScale, {
+          toValue: 1.8,
+          duration: 260,
+          useNativeDriver: true,
+        }),
+        Animated.timing(rippleOpacity, {
+          toValue: 0,
+          duration: 320,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    },
+    [rippleOpacity, rippleScale, slotWidth, xForIndex]
+  );
 
-  const indexForX = (x: number) => {
-    if (slotWidth <= 0) {
-      return activeIndex;
-    }
-    const rawIndex = Math.round((x - TAB_BAR_HORIZONTAL_PADDING) / slotWidth);
-    return Math.max(0, Math.min(TABS.length - 1, rawIndex));
-  };
+  const indexForX = useCallback(
+    (x: number) => {
+      if (slotWidth <= 0) {
+        return activeIndex;
+      }
+      const rawIndex = Math.round((x - TAB_BAR_HORIZONTAL_PADDING) / slotWidth);
+      return Math.max(0, Math.min(TABS.length - 1, rawIndex));
+    },
+    [activeIndex, slotWidth]
+  );
 
   const panResponder = useMemo(
     () =>
@@ -154,7 +163,18 @@ export function ParentBottomTabs({ activeTab, onTabPress }: ParentBottomTabsProp
         },
         onShouldBlockNativeResponder: () => true,
       }),
-    [activeIndex, activeTab, chipTranslateX, maxX, minX, onTabPress, slotWidth]
+    [
+      activeIndex,
+      activeTab,
+      chipTranslateX,
+      indexForX,
+      maxX,
+      minX,
+      onTabPress,
+      slotWidth,
+      triggerRippleAtIndex,
+      xForIndex,
+    ]
   );
 
   const onTabBarLayout = (event: LayoutChangeEvent) => {

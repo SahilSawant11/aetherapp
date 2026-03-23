@@ -6,13 +6,13 @@ import { launchCamera } from 'react-native-image-picker';
 import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppUser } from '../auth/session';
-import { TeacherBottomTabs, TeacherTabKey } from '../components/teacher-home/TeacherBottomTabs';
-import { TeacherCalendarTab } from '../components/teacher-home/TeacherCalendarTab';
-import { TeacherHeader } from '../components/teacher-home/TeacherHeader';
+import { AlertIcon, CalendarIcon, HomeIcon } from '../components/icons/ParentHubIcons';
 import { TeacherHomeTab } from '../components/teacher-home/TeacherHomeTab';
 import { TeacherNotificationsTab } from '../components/teacher-home/TeacherNotificationsTab';
 import { PunchLogItem, TeacherPunchTab } from '../components/teacher-home/TeacherPunchTab';
 import { TeacherSidebar } from '../components/teacher-home/TeacherSidebar';
+import { AppBottomTabs, AppTabItem } from '../components/ui/AppBottomTabs';
+import { AppHeader } from '../components/ui/AppHeader';
 import { supabase } from '../lib/supabase';
 import {
   formatActivityLabel,
@@ -35,6 +35,24 @@ type TeacherHomeScreenProps = {
 const ATTENDANCE_SELECT =
   'id, teacher_id, punch_type, punched_at, latitude, longitude, location_accuracy_meters, selfie_path, device_platform, created_at';
 
+const TEACHER_TABS: Array<AppTabItem<'today' | 'attendance' | 'alerts'>> = [
+  {
+    key: 'today',
+    label: 'Today',
+    renderIcon: (active, color) => <HomeIcon active={active} activeColor={color} />,
+  },
+  {
+    key: 'attendance',
+    label: 'Attendance',
+    renderIcon: (active, color) => <CalendarIcon active={active} activeColor={color} />,
+  },
+  {
+    key: 'alerts',
+    label: 'Alerts',
+    renderIcon: (active, color) => <AlertIcon active={active} activeColor={color} />,
+  },
+];
+
 type CurrentPosition = {
   coords: {
     accuracy: number | null;
@@ -52,7 +70,7 @@ const getShiftEndTimestamp = (punchedAt: string) =>
 export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
   const insets = useSafeAreaInsets();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<TeacherTabKey>('home');
+  const [activeTab, setActiveTab] = useState<'today' | 'attendance' | 'alerts'>('today');
   const [attendanceRecords, setAttendanceRecords] = useState<TeacherAttendanceRecord[]>([]);
   const [isAttendanceLoading, setIsAttendanceLoading] = useState(true);
   const [isSubmittingPunch, setIsSubmittingPunch] = useState(false);
@@ -129,13 +147,13 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
     return () => clearInterval(interval);
   }, [activePunchInRecord]);
 
-  const handleTabPress = (tab: TeacherTabKey) => {
+  const handleTabPress = (tab: 'today' | 'attendance' | 'alerts') => {
     if (tab === activeTab) {
       return;
     }
 
     Animated.timing(tabContentPhase, {
-      toValue: 0.86,
+      toValue: 0.96,
       duration: 120,
       useNativeDriver: true,
     }).start(() => {
@@ -149,7 +167,7 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
     });
   };
 
-  const handleSidebarTabSelect = (tab: TeacherTabKey) => {
+  const handleSidebarTabSelect = (tab: 'today' | 'attendance' | 'alerts') => {
     setMenuOpen(false);
     handleTabPress(tab);
   };
@@ -344,36 +362,40 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
         style={[
           styles.panel,
           {
-            paddingTop: Math.max(insets.top - 6, 0),
-            paddingBottom: Math.max(insets.bottom - 4, 0),
+            paddingTop: Math.max(insets.top - 2, 0),
+            paddingBottom: Math.max(insets.bottom - 2, 0),
           },
         ]}
       >
         <LinearGradient
-          colors={['#DDEBFF', '#EFF7FF', '#DDFCF4']}
+          colors={['#EEF4FF', '#F8FBFF', '#F4FAFF']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
         <LinearGradient
           colors={[
-            'rgba(37, 99, 235, 0.22)',
-            'rgba(56, 189, 248, 0.16)',
+            'rgba(37, 99, 235, 0.10)',
+            'rgba(56, 189, 248, 0.08)',
             'rgba(16, 185, 129, 0.00)',
           ]}
-          start={{ x: 0.1, y: 0 }}
-          end={{ x: 0.9, y: 0.38 }}
+          start={{ x: 0.2, y: 0 }}
+          end={{ x: 0.9, y: 0.45 }}
           style={StyleSheet.absoluteFill}
         />
-        <View style={styles.bgOrbOne} />
-        <View style={styles.bgOrbTwo} />
-        <View style={styles.bgOrbThree} />
 
-        <TeacherHeader
-          name={user.name}
-          isCheckedIn={Boolean(activePunchInRecord)}
+        <AppHeader
+          title={user.name}
+          subtitle={activePunchInRecord ? 'Checked in' : 'Checked out'}
+          avatarLabel={user.name
+            .split(' ')
+            .map(part => part[0])
+            .join('')
+            .slice(0, 2)
+            .toUpperCase()}
+          accentColor="#2563EB"
           onMenuPress={() => setMenuOpen(true)}
-          unreadCount={3}
+          alertCount={3}
         />
 
         <Animated.View
@@ -384,7 +406,7 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
               transform: [
                 {
                   scale: tabContentPhase.interpolate({
-                    inputRange: [0.86, 1],
+                    inputRange: [0.96, 1],
                     outputRange: [0.99, 1],
                   }),
                 },
@@ -392,19 +414,19 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
             },
           ]}
         >
-          {activeTab === 'home' ? (
+          {activeTab === 'today' ? (
             <TeacherHomeTab
-              isCheckedIn={Boolean(activePunchInRecord)}
+              isCheckedIn={activePunchInRecord != null}
               lastPunchLabel={lastPunchLabel}
               shiftCountdownLabel={shiftCountdownLabel}
               shiftEndsLabel={shiftEndsLabel}
-              onOpenPunch={() => handleTabPress('punch')}
-              onOpenCalendar={() => handleTabPress('calendar')}
+              onOpenPunch={() => handleTabPress('attendance')}
+              onOpenCalendar={() => handleTabPress('alerts')}
             />
           ) : null}
-          {activeTab === 'punch' ? (
+          {activeTab === 'attendance' ? (
             <TeacherPunchTab
-              isCheckedIn={Boolean(activePunchInRecord)}
+              isCheckedIn={activePunchInRecord != null}
               isLoading={isAttendanceLoading}
               isSubmitting={isSubmittingPunch}
               lastPunchLabel={lastPunchLabel}
@@ -417,20 +439,34 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
               onPunchOut={() => handlePunch('out')}
             />
           ) : null}
-          {activeTab === 'calendar' ? <TeacherCalendarTab /> : null}
-          {activeTab === 'notifications' ? <TeacherNotificationsTab /> : null}
+          {activeTab === 'alerts' ? <TeacherNotificationsTab /> : null}
         </Animated.View>
 
-        <TeacherBottomTabs activeTab={activeTab} onTabPress={handleTabPress} />
+        <AppBottomTabs
+          activeTab={activeTab}
+          items={TEACHER_TABS}
+          activeColor="#2563EB"
+          onTabPress={handleTabPress}
+        />
       </View>
 
       <TeacherSidebar
-        activeTab={activeTab}
+        activeTab={
+          activeTab === 'today'
+            ? 'home'
+            : activeTab === 'attendance'
+              ? 'punch'
+              : 'notifications'
+        }
         isOpen={menuOpen}
         name={user.name}
         onClose={() => setMenuOpen(false)}
         onSignOut={onSignOut}
-        onTabSelect={handleSidebarTabSelect}
+        onTabSelect={tab =>
+          handleSidebarTabSelect(
+            tab === 'home' ? 'today' : tab === 'punch' || tab === 'calendar' ? 'attendance' : 'alerts'
+          )
+        }
         overlayOpacity={overlayOpacity}
         slideX={slideX}
       />
@@ -441,42 +477,14 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E6EEF9',
+    backgroundColor: '#F4F8FD',
   },
   panel: {
     flex: 1,
-    borderRadius: 28,
     overflow: 'hidden',
   },
   main: {
     flex: 1,
-    paddingHorizontal: 14,
-  },
-  bgOrbOne: {
-    position: 'absolute',
-    top: -30,
-    right: -32,
-    width: 220,
-    height: 220,
-    borderRadius: 220,
-    backgroundColor: 'rgba(37, 99, 235, 0.24)',
-  },
-  bgOrbTwo: {
-    position: 'absolute',
-    bottom: 42,
-    left: -64,
-    width: 240,
-    height: 240,
-    borderRadius: 240,
-    backgroundColor: 'rgba(16, 185, 129, 0.18)',
-  },
-  bgOrbThree: {
-    position: 'absolute',
-    top: 120,
-    left: 80,
-    width: 220,
-    height: 160,
-    borderRadius: 180,
-    backgroundColor: 'rgba(56, 189, 248, 0.18)',
+    paddingHorizontal: 16,
   },
 });

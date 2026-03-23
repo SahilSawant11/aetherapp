@@ -2,15 +2,13 @@ import React from 'react';
 import {
   ActivityIndicator,
   Image,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { BlurView } from '@react-native-community/blur';
-import { getGlassPalette } from '../parent-home/glassTokens';
+import { SurfaceCard } from '../ui/SurfaceCard';
 
 export type PunchLogItem = {
   id: string;
@@ -34,34 +32,6 @@ type TeacherPunchTabProps = {
   onPunchOut: () => void;
 };
 
-function PunchCard({ children }: { children: React.ReactNode }) {
-  const palette = getGlassPalette('header');
-
-  return (
-    <View
-      style={[
-        styles.card,
-        {
-          borderColor: palette.border,
-          backgroundColor: palette.fallback,
-          shadowColor: palette.shadowColor,
-          shadowOpacity: palette.shadowOpacity,
-        },
-      ]}
-    >
-      <BlurView
-        blurType={Platform.OS === 'ios' ? palette.blurType : 'light'}
-        blurAmount={palette.blurAmount}
-        overlayColor={Platform.OS === 'android' ? 'rgba(0,0,0,0)' : undefined}
-        reducedTransparencyFallbackColor={palette.fallback}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: palette.overlay }]} />
-      <View style={styles.cardContent}>{children}</View>
-    </View>
-  );
-}
-
 export function TeacherPunchTab({
   isCheckedIn,
   isLoading,
@@ -79,11 +49,8 @@ export function TeacherPunchTab({
   const punchOutDisabled = isLoading || isSubmitting || !isCheckedIn;
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
-      <PunchCard>
+    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <SurfaceCard>
         <Text style={styles.sectionTitle}>Selfie punch</Text>
         <Text style={styles.sectionSubtitle}>
           Capture a front-camera selfie and stamp the punch with live device coordinates.
@@ -109,15 +76,13 @@ export function TeacherPunchTab({
         </View>
 
         {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-      </PunchCard>
+      </SurfaceCard>
 
-      <PunchCard>
+      <SurfaceCard tone="accent" accentColor="#2563EB">
         <View style={styles.stateRow}>
           <View style={styles.statusBlock}>
             <Text style={styles.statusKicker}>Current status</Text>
-            <Text style={styles.statusValue}>
-              {isCheckedIn ? 'Checked In' : 'Checked Out'}
-            </Text>
+            <Text style={styles.statusValue}>{isCheckedIn ? 'Checked In' : 'Checked Out'}</Text>
             <Text style={styles.statusMeta}>Last punch at {lastPunchLabel}</Text>
           </View>
           <View style={[styles.statusChip, isCheckedIn ? styles.statusChipIn : styles.statusChipOut]}>
@@ -172,9 +137,9 @@ export function TeacherPunchTab({
             )}
           </Pressable>
         </View>
-      </PunchCard>
+      </SurfaceCard>
 
-      <PunchCard>
+      <SurfaceCard>
         <Text style={styles.sectionTitle}>Recent activity</Text>
         {recentPunches.length > 0 ? (
           <View style={styles.logColumn}>
@@ -193,7 +158,7 @@ export function TeacherPunchTab({
         ) : (
           <Text style={styles.emptyText}>No punch records yet.</Text>
         )}
-      </PunchCard>
+      </SurfaceCard>
     </ScrollView>
   );
 }
@@ -203,18 +168,6 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 16,
     gap: 14,
-  },
-  card: {
-    borderRadius: 24,
-    borderWidth: 1,
-    overflow: 'hidden',
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 18,
-    elevation: 6,
-  },
-  cardContent: {
-    paddingHorizontal: 18,
-    paddingVertical: 18,
   },
   sectionTitle: {
     fontSize: 20,
@@ -229,23 +182,23 @@ const styles = StyleSheet.create({
   },
   cameraFrame: {
     marginTop: 18,
-    borderRadius: 24,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(37, 99, 235, 0.18)',
-    backgroundColor: 'rgba(15, 23, 42, 0.04)',
+    borderColor: '#BFDBFE',
+    backgroundColor: '#F8FAFC',
     padding: 18,
   },
   cameraRing: {
     minHeight: 220,
-    borderRadius: 22,
+    borderRadius: 20,
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: 'rgba(37, 99, 235, 0.36)',
+    borderColor: '#93C5FD',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
     overflow: 'hidden',
-    backgroundColor: 'rgba(15, 23, 42, 0.08)',
+    backgroundColor: '#EFF6FF',
   },
   selfiePreview: {
     ...StyleSheet.absoluteFillObject,
@@ -293,8 +246,8 @@ const styles = StyleSheet.create({
   statusKicker: {
     fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 2,
-    color: '#0284C7',
+    letterSpacing: 1.6,
+    color: '#2563EB',
     textTransform: 'uppercase',
   },
   statusValue: {
@@ -339,10 +292,10 @@ const styles = StyleSheet.create({
   },
   shiftTile: {
     flex: 1,
-    borderRadius: 18,
+    borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 14,
-    backgroundColor: 'rgba(255,255,255,0.56)',
+    backgroundColor: 'rgba(255,255,255,0.82)',
   },
   shiftLabel: {
     fontSize: 12,
@@ -363,8 +316,9 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    height: 50,
+    height: 48,
     borderRadius: 16,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -373,9 +327,11 @@ const styles = StyleSheet.create({
   },
   primaryAction: {
     backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
   },
   secondaryAction: {
-    backgroundColor: 'rgba(255,255,255,0.64)',
+    backgroundColor: 'rgba(255,255,255,0.82)',
+    borderColor: '#D8E2EE',
   },
   primaryText: {
     color: '#FFFFFF',
@@ -398,8 +354,8 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 12,
     paddingHorizontal: 14,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    borderRadius: 16,
+    backgroundColor: '#F8FAFC',
   },
   logTextWrap: {
     flex: 1,

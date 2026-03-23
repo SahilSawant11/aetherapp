@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { BlurView } from '@react-native-community/blur';
-import { getGlassPalette } from '../parent-home/glassTokens';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SurfaceCard } from '../ui/SurfaceCard';
 
 type NotificationItem = {
   id: string;
@@ -36,68 +35,44 @@ const INITIAL_NOTIFICATIONS: NotificationItem[] = [
 ];
 
 export function TeacherNotificationsTab() {
-  const palette = getGlassPalette('header');
   const [items, setItems] = useState(INITIAL_NOTIFICATIONS);
 
   const markRead = (id: string) => {
-    setItems(current =>
-      current.map(item => (item.id === id ? { ...item, unread: false } : item))
-    );
+    setItems(current => current.map(item => (item.id === id ? { ...item, unread: false } : item)));
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
+    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       {items.map(item => (
-        <View
+        <SurfaceCard
           key={item.id}
-          style={[
-            styles.card,
-            {
-              borderColor: palette.border,
-              backgroundColor: palette.fallback,
-              shadowColor: palette.shadowColor,
-              shadowOpacity: palette.shadowOpacity,
-            },
-          ]}
+          tone={item.unread ? 'accent' : 'default'}
+          accentColor="#2563EB"
         >
-          <BlurView
-            blurType={Platform.OS === 'ios' ? palette.blurType : 'light'}
-            blurAmount={palette.blurAmount}
-            overlayColor={Platform.OS === 'android' ? 'rgba(0,0,0,0)' : undefined}
-            reducedTransparencyFallbackColor={palette.fallback}
-            style={StyleSheet.absoluteFill}
-          />
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: palette.overlay }]} />
-
-          <View style={styles.cardContent}>
-            <View style={styles.rowTop}>
-              <Text style={styles.title}>{item.title}</Text>
-              <Text style={styles.time}>{item.time}</Text>
-            </View>
-            <Text style={styles.body}>{item.body}</Text>
-
-            <View style={styles.footer}>
-              {item.unread ? (
-                <View style={styles.unreadChip}>
-                  <Text style={styles.unreadChipText}>Unread</Text>
-                </View>
-              ) : (
-                <View style={styles.readChip}>
-                  <Text style={styles.readChipText}>Read</Text>
-                </View>
-              )}
-
-              {item.unread ? (
-                <Pressable onPress={() => markRead(item.id)} style={styles.markButton}>
-                  <Text style={styles.markButtonText}>Mark read</Text>
-                </Pressable>
-              ) : null}
-            </View>
+          <View style={styles.rowTop}>
+            <Text style={styles.title}>{item.title}</Text>
+            <Text style={styles.time}>{item.time}</Text>
           </View>
-        </View>
+          <Text style={styles.body}>{item.body}</Text>
+
+          <View style={styles.footer}>
+            {item.unread ? (
+              <View style={styles.unreadChip}>
+                <Text style={styles.unreadChipText}>Unread</Text>
+              </View>
+            ) : (
+              <View style={styles.readChip}>
+                <Text style={styles.readChipText}>Read</Text>
+              </View>
+            )}
+
+            {item.unread ? (
+              <Pressable onPress={() => markRead(item.id)} style={styles.markButton}>
+                <Text style={styles.markButtonText}>Mark read</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </SurfaceCard>
       ))}
     </ScrollView>
   );
@@ -108,18 +83,6 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 16,
     gap: 14,
-  },
-  card: {
-    borderRadius: 24,
-    borderWidth: 1,
-    overflow: 'hidden',
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 18,
-    elevation: 6,
-  },
-  cardContent: {
-    paddingHorizontal: 18,
-    paddingVertical: 18,
   },
   rowTop: {
     flexDirection: 'row',
@@ -180,7 +143,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.62)',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
   },
   markButtonText: {
     fontSize: 12,
