@@ -7,6 +7,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppUser } from '../auth/session';
 import { AlertIcon, CalendarIcon, HomeIcon } from '../components/icons/ParentHubIcons';
+import { TeacherCalendarTab } from '../components/teacher-home/TeacherCalendarTab';
 import { TeacherHomeTab } from '../components/teacher-home/TeacherHomeTab';
 import { TeacherNotificationsTab } from '../components/teacher-home/TeacherNotificationsTab';
 import { PunchLogItem, TeacherPunchTab } from '../components/teacher-home/TeacherPunchTab';
@@ -35,7 +36,7 @@ type TeacherHomeScreenProps = {
 const ATTENDANCE_SELECT =
   'id, teacher_id, punch_type, punched_at, latitude, longitude, location_accuracy_meters, selfie_path, device_platform, created_at';
 
-const TEACHER_TABS: Array<AppTabItem<'today' | 'attendance' | 'alerts'>> = [
+const TEACHER_TABS: Array<AppTabItem<'today' | 'attendance' | 'calendar' | 'alerts'>> = [
   {
     key: 'today',
     label: 'Today',
@@ -44,6 +45,11 @@ const TEACHER_TABS: Array<AppTabItem<'today' | 'attendance' | 'alerts'>> = [
   {
     key: 'attendance',
     label: 'Attendance',
+    renderIcon: (active, color) => <CalendarIcon active={active} activeColor={color} />,
+  },
+  {
+    key: 'calendar',
+    label: 'Calendar',
     renderIcon: (active, color) => <CalendarIcon active={active} activeColor={color} />,
   },
   {
@@ -70,7 +76,7 @@ const getShiftEndTimestamp = (punchedAt: string) =>
 export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
   const insets = useSafeAreaInsets();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'today' | 'attendance' | 'alerts'>('today');
+  const [activeTab, setActiveTab] = useState<'today' | 'attendance' | 'calendar' | 'alerts'>('today');
   const [attendanceRecords, setAttendanceRecords] = useState<TeacherAttendanceRecord[]>([]);
   const [isAttendanceLoading, setIsAttendanceLoading] = useState(true);
   const [isSubmittingPunch, setIsSubmittingPunch] = useState(false);
@@ -110,7 +116,7 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
       .select(ATTENDANCE_SELECT)
       .eq('teacher_id', user.id)
       .order('punched_at', { ascending: false })
-      .limit(8);
+      .limit(40);
 
     if (error) {
       setPunchError(error.message);
@@ -147,7 +153,7 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
     return () => clearInterval(interval);
   }, [activePunchInRecord]);
 
-  const handleTabPress = (tab: 'today' | 'attendance' | 'alerts') => {
+  const handleTabPress = (tab: 'today' | 'attendance' | 'calendar' | 'alerts') => {
     if (tab === activeTab) {
       return;
     }
@@ -167,7 +173,7 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
     });
   };
 
-  const handleSidebarTabSelect = (tab: 'today' | 'attendance' | 'alerts') => {
+  const handleSidebarTabSelect = (tab: 'today' | 'attendance' | 'calendar' | 'alerts') => {
     setMenuOpen(false);
     handleTabPress(tab);
   };
@@ -346,7 +352,7 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
       }
 
       setLastCapturedSelfieUri(selfieAsset.uri ?? null);
-      setAttendanceRecords(current => [mapTeacherAttendanceRecord(data), ...current].slice(0, 8));
+      setAttendanceRecords(current => [mapTeacherAttendanceRecord(data), ...current].slice(0, 40));
     } catch (error) {
       setPunchError(
         error instanceof Error ? error.message : 'Unable to complete attendance punch.'
@@ -439,6 +445,9 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
               onPunchOut={() => handlePunch('out')}
             />
           ) : null}
+          {activeTab === 'calendar' ? (
+            <TeacherCalendarTab teacherId={user.id} />
+          ) : null}
           {activeTab === 'alerts' ? <TeacherNotificationsTab /> : null}
         </Animated.View>
 
@@ -456,6 +465,8 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
             ? 'home'
             : activeTab === 'attendance'
               ? 'punch'
+              : activeTab === 'calendar'
+                ? 'calendar'
               : 'notifications'
         }
         isOpen={menuOpen}
@@ -464,7 +475,13 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
         onSignOut={onSignOut}
         onTabSelect={tab =>
           handleSidebarTabSelect(
-            tab === 'home' ? 'today' : tab === 'punch' || tab === 'calendar' ? 'attendance' : 'alerts'
+            tab === 'home'
+              ? 'today'
+              : tab === 'punch'
+                ? 'attendance'
+                : tab === 'calendar'
+                  ? 'calendar'
+                  : 'alerts'
           )
         }
         overlayOpacity={overlayOpacity}

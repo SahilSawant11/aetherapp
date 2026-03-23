@@ -1,15 +1,16 @@
 import React from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { TeacherTabKey } from './TeacherBottomTabs';
+
+export type TeacherSidebarTabKey = 'home' | 'punch' | 'calendar' | 'notifications';
 
 type TeacherSidebarProps = {
-  activeTab: TeacherTabKey;
+  activeTab: TeacherSidebarTabKey;
   isOpen: boolean;
   name: string;
   onClose: () => void;
   onSignOut: () => void;
-  onTabSelect: (tab: TeacherTabKey) => void;
+  onTabSelect: (tab: TeacherSidebarTabKey) => void;
   overlayOpacity: Animated.Value;
   slideX: Animated.Value;
 };
