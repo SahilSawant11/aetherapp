@@ -81,12 +81,11 @@ export function SignInScreen({
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
-        colors={['#E6FFF4', '#F4FBFF', '#E0F2FE']}
+        colors={['#FAFCFB', '#F8FAFC', '#F3F7F4']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.content}
@@ -97,26 +96,19 @@ export function SignInScreen({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View>
+          <View style={styles.header}>
             <Text style={styles.kicker}>Aether Education Systems</Text>
             <Text style={styles.title}>
               {mode === 'sign-in' ? 'Sign in' : 'Create parent account'}
             </Text>
             <Text style={styles.subtitle}>
               {mode === 'sign-in'
-                ? 'Use your email and password. The app will route you based on the role attached to your Supabase account.'
-                : 'Parent registration is self-service. Teacher accounts should be created and invited by administrators.'}
+                ? 'Use your email and password to continue.'
+                : 'Parent registration is self-service. Teacher accounts are managed by administrators.'}
             </Text>
           </View>
 
           <View style={styles.formCard}>
-            <LinearGradient
-              colors={mode === 'sign-in' ? ['#0F766E', '#34D399'] : ['#1D4ED8', '#38BDF8']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.cardAccent}
-            />
-
             <View style={styles.modeRow}>
               <Pressable
                 onPress={() => {
@@ -150,7 +142,7 @@ export function SignInScreen({
                       : styles.modeChipText
                   }
                 >
-                  Register Parent
+                  Register
                 </Text>
               </Pressable>
             </View>
@@ -159,8 +151,7 @@ export function SignInScreen({
               <View style={styles.setupPanel}>
                 <Text style={styles.setupTitle}>Supabase setup required</Text>
                 <Text style={styles.setupBody}>
-                  Add your project URL and anon key in `src/config/supabase.ts`
-                  before auth can work.
+                  Add your project URL and anon key in `src/config/supabase.ts` before auth can work.
                 </Text>
               </View>
             ) : null}
@@ -254,15 +245,11 @@ export function SignInScreen({
               </Text>
             </Pressable>
 
-            <View style={styles.demoPanel}>
-              <Text style={styles.demoTitle}>Account model</Text>
-              <Text style={styles.demoLine}>
-                Parent accounts can self-register here.
-              </Text>
-              <Text style={styles.demoLine}>
-                Teacher accounts should be invited or provisioned by admin.
-              </Text>
-            </View>
+            <Text style={styles.footerText}>
+              {mode === 'sign-in'
+                ? 'Teacher accounts should be invited by an administrator.'
+                : 'Parent accounts can be created here directly.'}
+            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -279,78 +266,81 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: 52,
-    paddingBottom: 28,
     flexGrow: 1,
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 36,
+  },
+  header: {
+    marginBottom: 34,
   },
   kicker: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
-    color: '#0F766E',
-    letterSpacing: 2.2,
+    color: '#4F7A67',
+    letterSpacing: 1.8,
     textTransform: 'uppercase',
   },
   title: {
-    marginTop: 14,
-    fontSize: 34,
-    lineHeight: 40,
-    fontWeight: '800',
+    marginTop: 12,
+    fontSize: 32,
+    lineHeight: 38,
+    fontWeight: '700',
     color: '#0F172A',
   },
   subtitle: {
-    marginTop: 12,
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#475569',
-    maxWidth: 340,
+    marginTop: 10,
+    maxWidth: 320,
+    fontSize: 14,
+    lineHeight: 21,
+    color: '#667085',
   },
   formCard: {
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.76)',
-    borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.16)',
-    paddingHorizontal: 20,
-    paddingVertical: 22,
     overflow: 'hidden',
-  },
-  cardAccent: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 6,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.84)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.9)',
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+    shadowColor: '#B8C7BE',
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 4,
   },
   modeRow: {
     flexDirection: 'row',
     gap: 10,
+    marginBottom: 10,
   },
   modeChip: {
     flex: 1,
     height: 42,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.68)',
+    borderRadius: 999,
+    backgroundColor: '#F4F7F4',
     alignItems: 'center',
     justifyContent: 'center',
   },
   modeChipActive: {
-    backgroundColor: '#0F172A',
+    backgroundColor: '#E7F2EB',
   },
   modeChipText: {
-    color: '#475569',
-    fontSize: 14,
-    fontWeight: '700',
+    color: '#77847C',
+    fontSize: 13,
+    fontWeight: '600',
   },
   modeChipTextActive: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
+    color: '#214B38',
+    fontSize: 13,
+    fontWeight: '700',
   },
   setupPanel: {
     marginTop: 16,
-    borderRadius: 18,
+    borderRadius: 16,
     backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
     paddingHorizontal: 14,
     paddingVertical: 14,
   },
@@ -358,8 +348,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     color: '#C2410C',
-    textTransform: 'uppercase',
     letterSpacing: 1.2,
+    textTransform: 'uppercase',
   },
   setupBody: {
     marginTop: 8,
@@ -368,25 +358,25 @@ const styles = StyleSheet.create({
     color: '#9A3412',
   },
   inputGroup: {
-    marginTop: 16,
+    marginTop: 18,
   },
   inputLabel: {
-    marginBottom: 8,
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#334155',
-    letterSpacing: 1.2,
+    marginBottom: 7,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6B7280',
+    letterSpacing: 1,
     textTransform: 'uppercase',
   },
   input: {
     height: 52,
     borderRadius: 16,
-    paddingHorizontal: 16,
-    backgroundColor: 'rgba(255,255,255,0.82)',
+    paddingHorizontal: 17,
+    backgroundColor: 'rgba(255,255,255,0.96)',
     color: '#0F172A',
     fontSize: 15,
     borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.18)',
+    borderColor: '#E3E9E5',
   },
   errorText: {
     marginTop: 12,
@@ -401,10 +391,10 @@ const styles = StyleSheet.create({
     color: '#0F766E',
   },
   submitButton: {
-    marginTop: 18,
+    marginTop: 24,
     height: 52,
     borderRadius: 16,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#214B38',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -413,28 +403,14 @@ const styles = StyleSheet.create({
   },
   submitText: {
     color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '800',
-    letterSpacing: 0.2,
+    fontSize: 14,
+    fontWeight: '700',
   },
-  demoPanel: {
-    marginTop: 18,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.62)',
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-  },
-  demoTitle: {
+  footerText: {
+    marginTop: 16,
     fontSize: 12,
-    fontWeight: '800',
-    color: '#0F766E',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-  },
-  demoLine: {
-    marginTop: 8,
-    fontSize: 13,
-    lineHeight: 18,
-    color: '#475569',
+    lineHeight: 17,
+    color: '#7A857E',
+    textAlign: 'center',
   },
 });
