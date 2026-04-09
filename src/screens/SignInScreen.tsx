@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -29,6 +29,9 @@ type SignInScreenProps = {
 
 type AuthMode = 'sign-in' | 'register-parent';
 
+const MIN_PASSWORD_LENGTH = 8;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function SignInScreen({
   isSupabaseConfigured,
   onSignIn,
@@ -43,25 +46,95 @@ export function SignInScreen({
   const [submitting, setSubmitting] = useState(false);
 
   const clearFeedback = () => setFeedback(null);
+  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedFullName = fullName.trim();
+  const isRegisterMode = mode === 'register-parent';
+  const submitDisabled = useMemo(() => {
+    if (!isSupabaseConfigured || submitting) {
+      return true;
+    }
+
+    if (!normalizedEmail || !password) {
+      return true;
+    }
+
+    if (!isRegisterMode) {
+      return false;
+    }
+
+    return !normalizedFullName || !confirmPassword;
+  }, [
+    confirmPassword,
+    isRegisterMode,
+    isSupabaseConfigured,
+    normalizedEmail,
+    normalizedFullName,
+    password,
+    submitting,
+  ]);
+
+  const handleModeChange = (nextMode: AuthMode) => {
+    if (nextMode === mode) {
+      return;
+    }
+
+    setMode(nextMode);
+    setPassword('');
+    setConfirmPassword('');
+    setFeedback(null);
+
+    if (nextMode === 'sign-in') {
+      setFullName('');
+    }
+  };
 
   const handleSubmit = async () => {
     clearFeedback();
 
-    if (mode === 'sign-in') {
-      if (!email.trim() || !password) {
-        setFeedback('Enter your email and password.');
-        return;
-      }
-
-      setSubmitting(true);
-      const result = await onSignIn({ email, password });
-      setSubmitting(false);
-      setFeedback(result.error ?? result.message ?? null);
+    if (!isSupabaseConfigured) {
+      setFeedback('Finish your Supabase setup before using sign-in or registration.');
       return;
     }
 
-    if (!fullName.trim() || !email.trim() || !password || !confirmPassword) {
+    if (!normalizedEmail || !password) {
+      setFeedback(
+        isRegisterMode
+          ? 'Complete all account creation fields.'
+          : 'Enter your email and password.'
+      );
+      return;
+    }
+
+    if (!EMAIL_PATTERN.test(normalizedEmail)) {
+      setFeedback('Enter a valid email address.');
+      return;
+    }
+
+    if (!isRegisterMode) {
+      try {
+        setSubmitting(true);
+        const result = await onSignIn({ email: normalizedEmail, password });
+        setFeedback(result.error ?? result.message ?? null);
+      } catch {
+        setFeedback('Something went wrong while signing in. Please try again.');
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    if (!normalizedFullName || !confirmPassword) {
       setFeedback('Complete all account creation fields.');
+      return;
+    }
+
+    if (normalizedFullName.length < 2) {
+      setFeedback('Enter the parent full name as it should appear in the app.');
+      return;
+    }
+
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setFeedback(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
       return;
     }
 
@@ -70,13 +143,53 @@ export function SignInScreen({
       return;
     }
 
-    setSubmitting(true);
-    const result = await onSignUpParent({ fullName, email, password });
-    setSubmitting(false);
-    setFeedback(result.error ?? result.message ?? null);
+    try {
+      setSubmitting(true);
+      const result = await onSignUpParent({
+        fullName: normalizedFullName,
+        email: normalizedEmail,
+        password,
+      });
+
+      if (result.error) {
+        setFeedback(result.error);
+        return;
+      }
+
+      setPassword('');
+      setConfirmPassword('');
+      setMode('sign-in');
+      setFeedback(
+        result.message ??
+          'Account created. Check your email, then sign in once your address is confirmed.'
+      );
+    } catch {
+      setFeedback('Something went wrong while creating the account. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const feedbackIsError = feedback != null && !feedback.toLowerCase().includes('check your email');
+  const feedbackIsError =
+    feedback != null &&
+    !feedback.toLowerCase().includes('check your email') &&
+    !feedback.toLowerCase().includes('sign in once your address is confirmed');
+
+  const submitLabel = submitting
+    ? 'Please wait...'
+    : isRegisterMode
+      ? 'Create Account'
+      : 'Sign In';
+
+  const helperText = isRegisterMode
+    ? `Parent accounts can be created here directly. Passwords need ${MIN_PASSWORD_LENGTH}+ characters.`
+    : 'Teacher accounts should be invited by an administrator.';
+
+  const emailPlaceholder = isRegisterMode ? 'parent@email.com' : 'name@school.com';
+
+  const passwordPlaceholder = isRegisterMode
+    ? `Create a password (${MIN_PASSWORD_LENGTH}+ characters)`
+    : 'Enter password';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -111,10 +224,7 @@ export function SignInScreen({
           <View style={styles.formCard}>
             <View style={styles.modeRow}>
               <Pressable
-                onPress={() => {
-                  setMode('sign-in');
-                  clearFeedback();
-                }}
+                onPress={() => handleModeChange('sign-in')}
                 style={[styles.modeChip, mode === 'sign-in' && styles.modeChipActive]}
               >
                 <Text
@@ -126,10 +236,7 @@ export function SignInScreen({
                 </Text>
               </Pressable>
               <Pressable
-                onPress={() => {
-                  setMode('register-parent');
-                  clearFeedback();
-                }}
+                onPress={() => handleModeChange('register-parent')}
                 style={[
                   styles.modeChip,
                   mode === 'register-parent' && styles.modeChipActive,
@@ -160,13 +267,16 @@ export function SignInScreen({
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Full Name</Text>
                 <TextInput
+                  autoComplete="name"
                   onChangeText={text => {
                     setFullName(text);
                     clearFeedback();
                   }}
                   placeholder="Parent full name"
                   placeholderTextColor="#94A3B8"
+                  returnKeyType="next"
                   style={styles.input}
+                  textContentType="name"
                   value={fullName}
                 />
               </View>
@@ -176,15 +286,18 @@ export function SignInScreen({
               <Text style={styles.inputLabel}>Email</Text>
               <TextInput
                 autoCapitalize="none"
+                autoComplete="email"
                 autoCorrect={false}
                 keyboardType="email-address"
                 onChangeText={text => {
                   setEmail(text);
                   clearFeedback();
                 }}
-                placeholder="name@school.com"
+                placeholder={emailPlaceholder}
                 placeholderTextColor="#94A3B8"
+                returnKeyType="next"
                 style={styles.input}
+                textContentType="username"
                 value={email}
               />
             </View>
@@ -193,15 +306,23 @@ export function SignInScreen({
               <Text style={styles.inputLabel}>Password</Text>
               <TextInput
                 autoCapitalize="none"
+                autoComplete={isRegisterMode ? 'new-password' : 'current-password'}
                 autoCorrect={false}
                 onChangeText={text => {
                   setPassword(text);
                   clearFeedback();
                 }}
-                placeholder="Enter password"
+                onSubmitEditing={() => {
+                  if (!isRegisterMode) {
+                    handleSubmit().catch(() => undefined);
+                  }
+                }}
+                placeholder={passwordPlaceholder}
                 placeholderTextColor="#94A3B8"
+                returnKeyType={isRegisterMode ? 'next' : 'done'}
                 secureTextEntry
                 style={styles.input}
+                textContentType={isRegisterMode ? 'newPassword' : 'password'}
                 value={password}
               />
             </View>
@@ -211,15 +332,21 @@ export function SignInScreen({
                 <Text style={styles.inputLabel}>Confirm Password</Text>
                 <TextInput
                   autoCapitalize="none"
+                  autoComplete="new-password"
                   autoCorrect={false}
                   onChangeText={text => {
                     setConfirmPassword(text);
                     clearFeedback();
                   }}
+                  onSubmitEditing={() => {
+                    handleSubmit().catch(() => undefined);
+                  }}
                   placeholder="Re-enter password"
                   placeholderTextColor="#94A3B8"
+                  returnKeyType="done"
                   secureTextEntry
                   style={styles.input}
+                  textContentType="newPassword"
                   value={confirmPassword}
                 />
               </View>
@@ -232,24 +359,14 @@ export function SignInScreen({
             ) : null}
 
             <Pressable
-              disabled={submitting}
+              disabled={submitDisabled}
               onPress={handleSubmit}
-              style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
+              style={[styles.submitButton, submitDisabled && styles.submitButtonDisabled]}
             >
-              <Text style={styles.submitText}>
-                {submitting
-                  ? 'Please wait...'
-                  : mode === 'sign-in'
-                    ? 'Sign In'
-                    : 'Create Account'}
-              </Text>
+              <Text style={styles.submitText}>{submitLabel}</Text>
             </Pressable>
 
-            <Text style={styles.footerText}>
-              {mode === 'sign-in'
-                ? 'Teacher accounts should be invited by an administrator.'
-                : 'Parent accounts can be created here directly.'}
-            </Text>
+            <Text style={styles.footerText}>{helperText}</Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
