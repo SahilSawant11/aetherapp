@@ -28,8 +28,10 @@ type TeacherPunchTabProps = {
   lastCapturedSelfieUri: string | null;
   recentPunches: PunchLogItem[];
   errorMessage: string | null;
+  statusMessage: string | null;
   onPunchIn: () => void;
   onPunchOut: () => void;
+  onRefresh: () => void;
 };
 
 export function TeacherPunchTab({
@@ -42,8 +44,10 @@ export function TeacherPunchTab({
   lastCapturedSelfieUri,
   recentPunches,
   errorMessage,
+  statusMessage,
   onPunchIn,
   onPunchOut,
+  onRefresh,
 }: TeacherPunchTabProps) {
   const punchInDisabled = isLoading || isSubmitting || isCheckedIn;
   const punchOutDisabled = isLoading || isSubmitting || !isCheckedIn;
@@ -64,10 +68,16 @@ export function TeacherPunchTab({
             <View style={lastCapturedSelfieUri ? styles.previewOverlay : undefined}>
               {isSubmitting ? <ActivityIndicator size="small" color="#1D4ED8" /> : null}
               <Text style={styles.cameraHint}>
-                {lastCapturedSelfieUri ? 'Last selfie captured' : 'Camera ready'}
+                {isSubmitting
+                  ? 'Attendance in progress'
+                  : lastCapturedSelfieUri
+                    ? 'Last selfie captured'
+                    : 'Camera ready'}
               </Text>
               <Text style={styles.cameraMeta}>
-                {lastCapturedSelfieUri
+                {statusMessage
+                  ? statusMessage
+                  : lastCapturedSelfieUri
                   ? 'A new punch will capture a fresh selfie and upload it to the backend.'
                   : 'Punching will open the front camera and require location access.'}
               </Text>
@@ -76,6 +86,9 @@ export function TeacherPunchTab({
         </View>
 
         {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+        {statusMessage && !errorMessage ? (
+          <Text style={styles.statusText}>{statusMessage}</Text>
+        ) : null}
       </SurfaceCard>
 
       <SurfaceCard tone="accent" accentColor="#2563EB">
@@ -104,6 +117,12 @@ export function TeacherPunchTab({
             <Text style={styles.shiftValue}>{shiftEndsLabel ?? '--:--'}</Text>
           </View>
         </View>
+
+        <Pressable disabled={isLoading || isSubmitting} onPress={onRefresh} style={styles.refreshButton}>
+          <Text style={styles.refreshButtonText}>
+            {isLoading ? 'Refreshing attendance...' : 'Refresh attendance'}
+          </Text>
+        </Pressable>
 
         <View style={styles.actionRow}>
           <Pressable
@@ -234,6 +253,13 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: '600',
   },
+  statusText: {
+    marginTop: 14,
+    color: '#1D4ED8',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
   stateRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -308,6 +334,21 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '800',
     color: '#0F172A',
+  },
+  refreshButton: {
+    marginTop: 14,
+    height: 40,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    backgroundColor: 'rgba(255,255,255,0.72)',
+  },
+  refreshButtonText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1D4ED8',
   },
   actionRow: {
     flexDirection: 'row',

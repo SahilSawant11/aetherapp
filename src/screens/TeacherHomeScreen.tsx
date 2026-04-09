@@ -67,6 +67,21 @@ type CurrentPosition = {
   };
 };
 
+type PunchProgressStage =
+  | 'idle'
+  | 'opening-camera'
+  | 'reading-location'
+  | 'uploading-selfie'
+  | 'saving-record';
+
+const PUNCH_PROGRESS_MESSAGE: Record<PunchProgressStage, string | null> = {
+  idle: null,
+  'opening-camera': 'Opening the front camera for a quick selfie check.',
+  'reading-location': 'Checking your live location so the punch can be verified.',
+  'uploading-selfie': 'Uploading the selfie securely to the attendance workspace.',
+  'saving-record': 'Saving your attendance record now.',
+};
+
 const describeLocation = (record: TeacherAttendanceRecord) =>
   `${record.latitude.toFixed(4)}, ${record.longitude.toFixed(4)}`;
 
@@ -81,6 +96,7 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
   const [isAttendanceLoading, setIsAttendanceLoading] = useState(true);
   const [isSubmittingPunch, setIsSubmittingPunch] = useState(false);
   const [punchError, setPunchError] = useState<string | null>(null);
+  const [punchStatusMessage, setPunchStatusMessage] = useState<string | null>(null);
   const [lastCapturedSelfieUri, setLastCapturedSelfieUri] = useState<string | null>(null);
   const [currentTimeMs, setCurrentTimeMs] = useState(Date.now());
   const slideX = useRef(new Animated.Value(-320)).current;
@@ -106,10 +122,12 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
     if (!supabase) {
       setAttendanceRecords([]);
       setIsAttendanceLoading(false);
+      setPunchError('Supabase is not configured yet.');
       return;
     }
 
     setIsAttendanceLoading(true);
+    setPunchError(null);
 
     const { data, error } = await supabase
       .from('teacher_attendance')
@@ -222,7 +240,7 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
   const captureSelfie = async () => {
     const hasCameraPermission = await requestCameraPermission();
     if (!hasCameraPermission) {
-      throw new Error('Camera permission is required to capture the attendance selfie.');
+      throw new Error('Allow camera access to capture the attendance selfie.');
     }
 
     const result = await launchCamera({
@@ -241,7 +259,7 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
 
     const asset = result.assets?.[0];
     if (!asset?.base64) {
-      throw new Error('Selfie capture did not return an uploadable image.');
+      throw new Error('The selfie could not be attached. Please try one more time.');
     }
 
     return asset;
@@ -250,7 +268,7 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
   const readCurrentPosition = async (): Promise<CurrentPosition> => {
     const hasLocationPermission = await requestLocationPermission();
     if (!hasLocationPermission) {
-      throw new Error('Location permission is required to record punch coordinates.');
+      throw new Error('Allow location access so the attendance punch can include campus coordinates.');
     }
 
     return new Promise((resolve, reject) => {
@@ -265,7 +283,13 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
           });
         },
         error => {
-          reject(new Error(error.message));
+          reject(
+            new Error(
+              error.code === 3
+                ? 'Location lookup timed out. Move to an open area and try again.'
+                : 'Unable to read your current location. Please try again.'
+            )
+          );
         },
         {
           enableHighAccuracy: true,
@@ -315,17 +339,21 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
     }
 
     setPunchError(null);
+    setPunchStatusMessage(PUNCH_PROGRESS_MESSAGE['opening-camera']);
     setIsSubmittingPunch(true);
 
     try {
+      setPunchStatusMessage(PUNCH_PROGRESS_MESSAGE['opening-camera']);
       const selfieAsset = await captureSelfie();
       if (!selfieAsset) {
-        setIsSubmittingPunch(false);
+        setPunchStatusMessage('Punch cancelled before the selfie was captured.');
         return;
       }
 
+      setPunchStatusMessage(PUNCH_PROGRESS_MESSAGE['reading-location']);
       const position = await readCurrentPosition();
       const mimeType = selfieAsset.type ?? 'image/jpeg';
+      setPunchStatusMessage(PUNCH_PROGRESS_MESSAGE['uploading-selfie']);
       const selfiePath = await uploadSelfie(
         user.id,
         punchType,
@@ -333,6 +361,7 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
         mimeType
       );
 
+      setPunchStatusMessage(PUNCH_PROGRESS_MESSAGE['saving-record']);
       const { data, error } = await supabase
         .from('teacher_attendance')
         .insert({
@@ -353,10 +382,16 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
 
       setLastCapturedSelfieUri(selfieAsset.uri ?? null);
       setAttendanceRecords(current => [mapTeacherAttendanceRecord(data), ...current].slice(0, 40));
+      setPunchStatusMessage(
+        punchType === 'in'
+          ? 'Punch in complete. Your shift is now active.'
+          : 'Punch out complete. You are all set for the day.'
+      );
     } catch (error) {
       setPunchError(
         error instanceof Error ? error.message : 'Unable to complete attendance punch.'
       );
+      setPunchStatusMessage(null);
     } finally {
       setIsSubmittingPunch(false);
     }
@@ -441,8 +476,10 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
               lastCapturedSelfieUri={lastCapturedSelfieUri}
               recentPunches={recentPunches}
               errorMessage={punchError}
+              statusMessage={punchStatusMessage}
               onPunchIn={() => handlePunch('in')}
               onPunchOut={() => handlePunch('out')}
+              onRefresh={loadAttendanceRecords}
             />
           ) : null}
           {activeTab === 'calendar' ? (
