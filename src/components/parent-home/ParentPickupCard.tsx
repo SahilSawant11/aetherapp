@@ -2,15 +2,33 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { ClockIcon } from '../icons/ParentHubIcons';
 
-export function ParentPickupCard() {
+type ParentPickupCardProps = {
+  countdownLabel: string;
+  contactName: string;
+  contactRelation: string;
+  gate: string;
+  pickupTimeLabel: string;
+};
+
+export function ParentPickupCard({
+  countdownLabel,
+  contactName,
+  contactRelation,
+  gate,
+  pickupTimeLabel,
+}: ParentPickupCardProps) {
   return (
     <View style={styles.pickupCard}>
       <View style={styles.pickupIconWrap}>
         <ClockIcon />
       </View>
-      <View>
+      <View style={styles.copy}>
         <Text style={styles.pickupLabel}>PICK UP TIME</Text>
-        <Text style={styles.pickupTime}>03:30 PM Today</Text>
+        <Text style={styles.pickupTime}>{pickupTimeLabel}</Text>
+        <Text style={styles.pickupMeta}>{countdownLabel}</Text>
+        <Text style={styles.pickupMeta}>
+          {contactName} · {contactRelation} · {gate}
+        </Text>
       </View>
     </View>
   );
@@ -43,6 +61,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 16,
   },
+  copy: {
+    flex: 1,
+  },
   pickupLabel: {
     fontSize: 8.5,
     letterSpacing: 2,
@@ -55,5 +76,12 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     color: '#1E293B',
     fontWeight: '800',
+  },
+  pickupMeta: {
+    marginTop: 2,
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#64748B',
+    fontWeight: '600',
   },
 });

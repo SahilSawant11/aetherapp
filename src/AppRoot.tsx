@@ -41,7 +41,7 @@ function AppRootInner() {
   }
 
   if (user.role === 'parent') {
-    return <ParentHomeScreen onSignOut={signOut} />;
+    return <ParentHomeScreen user={user} onSignOut={signOut} />;
   }
 
   return <TeacherHomeScreen user={user} onSignOut={signOut} />;

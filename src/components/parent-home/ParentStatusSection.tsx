@@ -1,81 +1,20 @@
-import React, { memo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { memo, useEffect, useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import {
+  DEFAULT_PICKUP_PLAN,
+  formatCountdownFromNow,
+  formatTime12Hour,
+  getCurrentLectureState,
+  PARENT_DASHBOARD_ACTIONS,
+} from '../../lib/parentDashboard';
+import { ParentPickupCard } from './ParentPickupCard';
 import { SurfaceCard } from '../ui/SurfaceCard';
 
-type LectureSlot = {
-  title: string;
-  room: string;
-  start: string;
-  end: string;
-};
-
-const WEEKDAY_TIMETABLE: LectureSlot[] = [
-  { title: 'Mathematics', room: 'Class X B', start: '08:30', end: '09:15' },
-  { title: 'Science', room: 'Lab 2', start: '09:20', end: '10:05' },
-  { title: 'Arts', room: 'Class X B', start: '10:30', end: '11:45' },
-  { title: 'English', room: 'Class X B', start: '12:00', end: '12:45' },
-  { title: 'History', room: 'Class X B', start: '13:30', end: '14:15' },
-  { title: 'Sports', room: 'Ground', start: '14:20', end: '15:05' },
-];
-
-const toMinutes = (time: string): number => {
-  const [hours, minutes] = time.split(':').map(Number);
-  return hours * 60 + minutes;
-};
-
-const to12Hour = (time: string): string => {
-  const [hourText, minuteText] = time.split(':');
-  const hour24 = Number(hourText);
-  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
-  const suffix = hour24 >= 12 ? 'PM' : 'AM';
-  return `${hour12}:${minuteText} ${suffix}`;
-};
-
-const getCurrentLectureState = () => {
-  const now = new Date();
-  const day = now.getDay();
-  if (day === 0 || day === 6) {
-    return {
-      kicker: 'No classes today',
-      title: 'Weekend',
-      room: 'School closed',
-      time: 'Check calendar for attendance records',
-    };
-  }
-
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const currentLecture = WEEKDAY_TIMETABLE.find(slot => {
-    const start = toMinutes(slot.start);
-    const end = toMinutes(slot.end);
-    return nowMinutes >= start && nowMinutes < end;
-  });
-
-  if (currentLecture) {
-    return {
-      kicker: 'Currently attending',
-      title: currentLecture.title,
-      room: currentLecture.room,
-      time: `${to12Hour(currentLecture.start)} - ${to12Hour(currentLecture.end)}`,
-    };
-  }
-
-  const nextLecture = WEEKDAY_TIMETABLE.find(slot => nowMinutes < toMinutes(slot.start));
-  if (nextLecture) {
-    return {
-      kicker: 'Next lecture',
-      title: nextLecture.title,
-      room: nextLecture.room,
-      time: `${to12Hour(nextLecture.start)} - ${to12Hour(nextLecture.end)}`,
-    };
-  }
-
-  return {
-    kicker: 'No more lectures today',
-    title: 'Finished',
-    room: 'Student is out of class',
-    time: 'School day has ended',
-  };
+type ParentStatusSectionProps = {
+  alertCount: number;
+  parentName: string;
+  studentName?: string;
 };
 
 function LocationPinIcon() {
@@ -92,14 +31,47 @@ function LocationPinIcon() {
   );
 }
 
-function ParentStatusSectionComponent() {
-  const lecture = getCurrentLectureState();
+function ParentStatusSectionComponent({
+  alertCount,
+  parentName,
+  studentName = 'Rahul',
+}: ParentStatusSectionProps) {
+  const [now, setNow] = useState(() => new Date());
+  const [selectedActionKey, setSelectedActionKey] = useState<'absence' | 'pickup' | 'message'>(
+    'absence'
+  );
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(new Date());
+    }, 60_000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const lecture = useMemo(() => getCurrentLectureState(now), [now]);
+  const selectedAction = useMemo(
+    () => PARENT_DASHBOARD_ACTIONS.find(action => action.key === selectedActionKey)!,
+    [selectedActionKey]
+  );
+  const pickupCountdownLabel = useMemo(
+    () => formatCountdownFromNow(DEFAULT_PICKUP_PLAN.time, now),
+    [now]
+  );
+  const pickupTimeLabel = `${formatTime12Hour(DEFAULT_PICKUP_PLAN.time)} Today`;
+  const todaysDateLabel = now.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  });
+  const greetingName = parentName.split(' ')[0] ?? parentName;
 
   return (
     <View style={styles.main}>
       <SurfaceCard tone="accent" accentColor="#059669">
         <Text style={styles.kicker}>{lecture.kicker}</Text>
-        <Text style={styles.classTitle}>{lecture.title}</Text>
+        <Text style={styles.classTitle}>{studentName} · {lecture.title}</Text>
+        <Text style={styles.subhead}>{todaysDateLabel} · {lecture.progressLabel}</Text>
         <View style={styles.locationPill}>
           <LocationPinIcon />
           <Text style={styles.locationText}>{lecture.room}</Text>
@@ -107,19 +79,27 @@ function ParentStatusSectionComponent() {
         <Text style={styles.timeText}>{lecture.time}</Text>
       </SurfaceCard>
 
+      <ParentPickupCard
+        countdownLabel={pickupCountdownLabel}
+        contactName={greetingName}
+        contactRelation={DEFAULT_PICKUP_PLAN.contactRelation}
+        gate={DEFAULT_PICKUP_PLAN.gate}
+        pickupTimeLabel={pickupTimeLabel}
+      />
+
       <SurfaceCard>
         <Text style={styles.sectionTitle}>Today at a glance</Text>
         <View style={styles.row}>
           <View style={styles.tile}>
-            <Text style={styles.tileValue}>08:30</Text>
-            <Text style={styles.tileLabel}>Started</Text>
+            <Text style={styles.tileValue}>{todaysDateLabel.split(',')[0]}</Text>
+            <Text style={styles.tileLabel}>School day</Text>
           </View>
           <View style={styles.tile}>
-            <Text style={styles.tileValue}>14:45</Text>
+            <Text style={styles.tileValue}>{formatTime12Hour(DEFAULT_PICKUP_PLAN.time)}</Text>
             <Text style={styles.tileLabel}>Pickup</Text>
           </View>
           <View style={styles.tile}>
-            <Text style={styles.tileValue}>2</Text>
+            <Text style={styles.tileValue}>{alertCount}</Text>
             <Text style={styles.tileLabel}>Alerts</Text>
           </View>
         </View>
@@ -127,10 +107,24 @@ function ParentStatusSectionComponent() {
 
       <SurfaceCard tone="muted">
         <Text style={styles.sectionTitle}>Parent actions</Text>
+        <Text style={styles.actionSummary}>{selectedAction.detail}</Text>
         <View style={styles.actionList}>
-          <Text style={styles.actionItem}>Report an absence</Text>
-          <Text style={styles.actionItem}>Update pickup contact</Text>
-          <Text style={styles.actionItem}>Send a message to school</Text>
+          {PARENT_DASHBOARD_ACTIONS.map(action => {
+            const isSelected = action.key === selectedAction.key;
+
+            return (
+              <Pressable
+                key={action.key}
+                onPress={() => setSelectedActionKey(action.key)}
+                style={[styles.actionButton, isSelected ? styles.actionButtonSelected : null]}
+              >
+                <Text style={isSelected ? styles.actionItemSelected : styles.actionItem}>
+                  {action.label}
+                </Text>
+                <Text style={styles.actionHelper}>{action.helper}</Text>
+              </Pressable>
+            );
+          })}
         </View>
       </SurfaceCard>
     </View>
@@ -158,6 +152,13 @@ const styles = StyleSheet.create({
     lineHeight: 34,
     color: '#0F172A',
     fontWeight: '800',
+  },
+  subhead: {
+    marginTop: 8,
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#475569',
+    fontWeight: '700',
   },
   locationPill: {
     marginTop: 18,
@@ -215,9 +216,40 @@ const styles = StyleSheet.create({
     marginTop: 14,
     gap: 12,
   },
+  actionSummary: {
+    marginTop: 10,
+    fontSize: 14,
+    lineHeight: 21,
+    color: '#475569',
+    fontWeight: '600',
+  },
+  actionButton: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#D8E2EE',
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  actionButtonSelected: {
+    borderColor: '#A7F3D0',
+    backgroundColor: '#ECFDF5',
+  },
   actionItem: {
     fontSize: 15,
     fontWeight: '600',
     color: '#334155',
+  },
+  actionItemSelected: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#047857',
+  },
+  actionHelper: {
+    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#64748B',
+    fontWeight: '600',
   },
 });

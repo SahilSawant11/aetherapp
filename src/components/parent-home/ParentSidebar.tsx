@@ -2,29 +2,52 @@ import React from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 
+export type ParentSidebarTabKey = 'today' | 'timeline' | 'alerts';
+
 type ParentSidebarProps = {
+  activeTab: ParentSidebarTabKey;
   isOpen: boolean;
+  name: string;
   overlayOpacity: Animated.Value;
   slideX: Animated.Value;
   onClose: () => void;
   onSignOut: () => void;
+  onTabSelect: (tab: ParentSidebarTabKey) => void;
 };
 
-function SidebarItem({ active, label }: { active?: boolean; label: string }) {
+function SidebarItem({
+  active,
+  label,
+  onPress,
+}: {
+  active?: boolean;
+  label: string;
+  onPress: () => void;
+}) {
   return (
-    <Pressable style={styles.sidebarItem}>
+    <Pressable onPress={onPress} style={styles.sidebarItem}>
       <Text style={active ? styles.sidebarItemTextActive : styles.sidebarItemText}>{label}</Text>
     </Pressable>
   );
 }
 
 export function ParentSidebar({
+  activeTab,
   isOpen,
+  name,
   overlayOpacity,
   slideX,
   onClose,
   onSignOut,
+  onTabSelect,
 }: ParentSidebarProps) {
+  const initials = name
+    .split(' ')
+    .map(part => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <View pointerEvents={isOpen ? 'auto' : 'none'} style={StyleSheet.absoluteFill}>
       <Animated.View style={[styles.menuOverlay, { opacity: overlayOpacity }]}>
@@ -47,19 +70,29 @@ export function ParentSidebar({
         <View style={styles.sidebarContent}>
           <View style={styles.sidebarHeader}>
             <View style={styles.avatarWrap}>
-              <Text style={styles.avatarText}>LS</Text>
+              <Text style={styles.avatarText}>{initials}</Text>
             </View>
             <View>
               <Text style={styles.sidebarTitle}>Parent Hub</Text>
-              <Text style={styles.sidebarSubtitle}>Sahil</Text>
+              <Text style={styles.sidebarSubtitle}>{name}</Text>
             </View>
           </View>
 
-          <SidebarItem active label="Home" />
-          <SidebarItem label="Calendar" />
-          <SidebarItem label="Attendance" />
-          <SidebarItem label="Alerts" />
-          <SidebarItem label="Settings" />
+          <SidebarItem
+            active={activeTab === 'today'}
+            label="Today"
+            onPress={() => onTabSelect('today')}
+          />
+          <SidebarItem
+            active={activeTab === 'timeline'}
+            label="Timeline"
+            onPress={() => onTabSelect('timeline')}
+          />
+          <SidebarItem
+            active={activeTab === 'alerts'}
+            label="Alerts"
+            onPress={() => onTabSelect('alerts')}
+          />
 
           <View style={styles.sidebarFooter}>
             <Pressable

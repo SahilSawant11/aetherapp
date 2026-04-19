@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppUser } from '../auth/session';
 import { AlertIcon, CalendarIcon, HomeIcon } from '../components/icons/ParentHubIcons';
 import { ParentCalendarTab } from '../components/parent-home/ParentCalendarTab';
 import { ParentSidebar } from '../components/parent-home/ParentSidebar';
@@ -9,8 +10,10 @@ import { ParentStatusSection } from '../components/parent-home/ParentStatusSecti
 import { AppBottomTabs, AppTabItem } from '../components/ui/AppBottomTabs';
 import { AppHeader } from '../components/ui/AppHeader';
 import { SurfaceCard } from '../components/ui/SurfaceCard';
+import { PARENT_ALERTS } from '../lib/parentDashboard';
 
 type ParentHomeScreenProps = {
+  user: AppUser;
   onSignOut: () => void;
 };
 
@@ -35,19 +38,24 @@ const PARENT_TABS: Array<AppTabItem<'today' | 'timeline' | 'alerts'>> = [
 function ParentAlertsTab() {
   return (
     <View style={styles.alertsWrap}>
-      <SurfaceCard tone="accent" accentColor="#059669">
-        <Text style={styles.alertTitle}>Pickup reminder</Text>
-        <Text style={styles.alertBody}>Rahul&apos;s bus route reaches the gate at 2:45 PM today.</Text>
-      </SurfaceCard>
-      <SurfaceCard>
-        <Text style={styles.alertTitle}>School notice</Text>
-        <Text style={styles.alertBody}>Math notebooks should be submitted by Wednesday morning.</Text>
-      </SurfaceCard>
+      {PARENT_ALERTS.map(alert => (
+        <SurfaceCard
+          key={alert.id}
+          tone={alert.tone === 'accent' ? 'accent' : 'default'}
+          accentColor="#059669"
+        >
+          <View style={styles.alertHeader}>
+            <Text style={styles.alertTitle}>{alert.title}</Text>
+            <Text style={styles.alertTime}>{alert.time}</Text>
+          </View>
+          <Text style={styles.alertBody}>{alert.body}</Text>
+        </SurfaceCard>
+      ))}
     </View>
   );
 }
 
-export function ParentHomeScreen({ onSignOut }: ParentHomeScreenProps) {
+export function ParentHomeScreen({ user, onSignOut }: ParentHomeScreenProps) {
   const insets = useSafeAreaInsets();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'today' | 'timeline' | 'alerts'>('today');
@@ -90,6 +98,14 @@ export function ParentHomeScreen({ onSignOut }: ParentHomeScreenProps) {
     });
   };
 
+  const alertCount = PARENT_ALERTS.length;
+  const avatarLabel = user.name
+    .split(' ')
+    .map(part => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <View style={styles.container}>
       <View
@@ -115,11 +131,11 @@ export function ParentHomeScreen({ onSignOut }: ParentHomeScreenProps) {
         />
 
         <AppHeader
-          title="Sahil"
-          subtitle="Active session"
-          avatarLabel="SA"
+          title={user.name}
+          subtitle={user.subtitle}
+          avatarLabel={avatarLabel}
           accentColor="#059669"
-          alertCount={2}
+          alertCount={alertCount}
           onMenuPress={() => setMenuOpen(true)}
         />
 
@@ -139,7 +155,9 @@ export function ParentHomeScreen({ onSignOut }: ParentHomeScreenProps) {
             },
           ]}
         >
-          {activeTab === 'today' ? <ParentStatusSection /> : null}
+          {activeTab === 'today' ? (
+            <ParentStatusSection alertCount={alertCount} parentName={user.name} />
+          ) : null}
           {activeTab === 'timeline' ? <ParentCalendarTab /> : null}
           {activeTab === 'alerts' ? <ParentAlertsTab /> : null}
         </Animated.View>
@@ -153,11 +171,17 @@ export function ParentHomeScreen({ onSignOut }: ParentHomeScreenProps) {
       </View>
 
       <ParentSidebar
+        activeTab={activeTab}
         isOpen={menuOpen}
+        name={user.name}
         overlayOpacity={overlayOpacity}
         slideX={slideX}
         onClose={() => setMenuOpen(false)}
         onSignOut={onSignOut}
+        onTabSelect={tab => {
+          setMenuOpen(false);
+          handleTabPress(tab);
+        }}
       />
     </View>
   );
@@ -182,9 +206,21 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   alertTitle: {
+    flex: 1,
     fontSize: 18,
     fontWeight: '800',
     color: '#0F172A',
+  },
+  alertHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  alertTime: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
   },
   alertBody: {
     marginTop: 8,
