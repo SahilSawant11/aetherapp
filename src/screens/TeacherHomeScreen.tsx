@@ -16,11 +16,17 @@ import { AppBottomTabs, AppTabItem } from '../components/ui/AppBottomTabs';
 import { AppHeader } from '../components/ui/AppHeader';
 import { supabase } from '../lib/supabase';
 import {
+  formatHoursAndMinutes,
   formatActivityLabel,
   formatDuration,
   formatPunchLabel,
+  getCompletedShiftCount,
+  getCurrentShiftDurationMs,
   formatShiftDeadline,
   getActivePunchInRecord,
+  getPunchActionBlockReason,
+  getTeacherAttendanceState,
+  getWorkedDurationMs,
   mapTeacherAttendanceRecord,
   PunchType,
   TEACHER_SELFIE_BUCKET,
@@ -158,9 +164,21 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
     () => getActivePunchInRecord(attendanceRecords),
     [attendanceRecords]
   );
+  const attendanceState = useMemo(
+    () => getTeacherAttendanceState(attendanceRecords, currentTimeMs),
+    [attendanceRecords, currentTimeMs]
+  );
+  const punchInBlockedReason = useMemo(
+    () => getPunchActionBlockReason(attendanceRecords, 'in', currentTimeMs),
+    [attendanceRecords, currentTimeMs]
+  );
+  const punchOutBlockedReason = useMemo(
+    () => getPunchActionBlockReason(attendanceRecords, 'out', currentTimeMs),
+    [attendanceRecords, currentTimeMs]
+  );
 
   useEffect(() => {
-    if (!activePunchInRecord) {
+    if (!attendanceState.isCheckedIn) {
       return;
     }
 
@@ -169,7 +187,7 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [activePunchInRecord]);
+  }, [attendanceState.isCheckedIn]);
 
   const handleTabPress = (tab: 'today' | 'attendance' | 'calendar' | 'alerts') => {
     if (tab === activeTab) {
@@ -197,13 +215,27 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
   };
 
   const lastPunchLabel = formatPunchLabel(attendanceRecords[0]?.punchedAt);
+  const lastSuccessfulActionLabel = attendanceRecords[0]
+    ? `${attendanceRecords[0].punchType === 'in' ? 'Punch in' : 'Punch out'} at ${lastPunchLabel}`
+    : 'No successful punches yet';
+  const currentShiftDurationMs = getCurrentShiftDurationMs(attendanceRecords, currentTimeMs);
+  const workedHoursLabel = formatHoursAndMinutes(
+    getWorkedDurationMs(attendanceRecords, currentTimeMs)
+  );
+  const completedShiftCount = getCompletedShiftCount(attendanceRecords);
   const shiftEndTimestamp = activePunchInRecord
     ? getShiftEndTimestamp(activePunchInRecord.punchedAt)
     : null;
   const shiftEndsLabel = formatShiftDeadline(shiftEndTimestamp);
-  const shiftCountdownLabel = activePunchInRecord
-    ? formatDuration(new Date(shiftEndTimestamp!).getTime() - currentTimeMs)
+  const shiftCountdownLabel = attendanceState.isCheckedIn
+    ? attendanceState.needsAttention
+      ? formatDuration(currentShiftDurationMs ?? 0)
+      : formatDuration(new Date(shiftEndTimestamp!).getTime() - currentTimeMs)
     : null;
+  const shiftTimerLabel = attendanceState.needsAttention
+    ? 'Open shift duration'
+    : 'Shift timer';
+  const shiftEndLabel = attendanceState.needsAttention ? 'Opened at' : 'Shift ends';
   const recentPunches: PunchLogItem[] = attendanceRecords.map(record => ({
     id: record.id,
     label: record.punchType === 'in' ? 'Punch In' : 'Punch Out',
@@ -330,11 +362,11 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
       return;
     }
 
-    if (punchType === 'in' && activePunchInRecord) {
-      return;
-    }
-
-    if (punchType === 'out' && !activePunchInRecord) {
+    const blockedReason =
+      punchType === 'in' ? punchInBlockedReason : punchOutBlockedReason;
+    if (blockedReason) {
+      setPunchError(blockedReason);
+      setPunchStatusMessage(null);
       return;
     }
 
@@ -427,7 +459,7 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
 
         <AppHeader
           title={user.name}
-          subtitle={activePunchInRecord ? 'Checked in' : 'Checked out'}
+          subtitle={attendanceState.subtitle}
           avatarLabel={user.name
             .split(' ')
             .map(part => part[0])
@@ -457,8 +489,14 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
         >
           {activeTab === 'today' ? (
             <TeacherHomeTab
-              isCheckedIn={activePunchInRecord != null}
+              isCheckedIn={attendanceState.isCheckedIn}
+              statusLabel={attendanceState.statusLabel}
+              statusTone={attendanceState.statusTone}
+              statusSubtitle={attendanceState.subtitle}
               lastPunchLabel={lastPunchLabel}
+              workedHoursLabel={workedHoursLabel}
+              completedShiftCount={completedShiftCount}
+              blockedActionReason={punchInBlockedReason ?? punchOutBlockedReason}
               shiftCountdownLabel={shiftCountdownLabel}
               shiftEndsLabel={shiftEndsLabel}
               onOpenPunch={() => handleTabPress('attendance')}
@@ -467,16 +505,29 @@ export function TeacherHomeScreen({ user, onSignOut }: TeacherHomeScreenProps) {
           ) : null}
           {activeTab === 'attendance' ? (
             <TeacherPunchTab
-              isCheckedIn={activePunchInRecord != null}
+              isCheckedIn={attendanceState.isCheckedIn}
+              statusLabel={attendanceState.statusLabel}
+              statusMeta={
+                attendanceState.isCheckedIn
+                  ? `${attendanceState.subtitle} Last punch at ${lastPunchLabel}.`
+                  : `Last punch at ${lastPunchLabel}.`
+              }
+              needsAttention={attendanceState.needsAttention}
               isLoading={isAttendanceLoading}
               isSubmitting={isSubmittingPunch}
               lastPunchLabel={lastPunchLabel}
+              workedHoursLabel={workedHoursLabel}
+              lastSuccessfulActionLabel={lastSuccessfulActionLabel}
+              shiftTimerLabel={shiftTimerLabel}
+              shiftEndLabel={shiftEndLabel}
               shiftCountdownLabel={shiftCountdownLabel}
-              shiftEndsLabel={shiftEndsLabel}
+              shiftEndsLabel={attendanceState.needsAttention ? lastPunchLabel : shiftEndsLabel}
               lastCapturedSelfieUri={lastCapturedSelfieUri}
               recentPunches={recentPunches}
               errorMessage={punchError}
               statusMessage={punchStatusMessage}
+              punchInBlockedReason={punchInBlockedReason}
+              punchOutBlockedReason={punchOutBlockedReason}
               onPunchIn={() => handlePunch('in')}
               onPunchOut={() => handlePunch('out')}
               onRefresh={loadAttendanceRecords}

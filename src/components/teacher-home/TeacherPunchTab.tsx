@@ -20,15 +20,24 @@ export type PunchLogItem = {
 
 type TeacherPunchTabProps = {
   isCheckedIn: boolean;
+  statusLabel: string;
+  statusMeta: string;
+  needsAttention: boolean;
   isLoading: boolean;
   isSubmitting: boolean;
   lastPunchLabel: string;
+  workedHoursLabel: string;
+  lastSuccessfulActionLabel: string;
+  shiftTimerLabel: string;
+  shiftEndLabel: string;
   shiftCountdownLabel: string | null;
   shiftEndsLabel: string | null;
   lastCapturedSelfieUri: string | null;
   recentPunches: PunchLogItem[];
   errorMessage: string | null;
   statusMessage: string | null;
+  punchInBlockedReason: string | null;
+  punchOutBlockedReason: string | null;
   onPunchIn: () => void;
   onPunchOut: () => void;
   onRefresh: () => void;
@@ -36,21 +45,33 @@ type TeacherPunchTabProps = {
 
 export function TeacherPunchTab({
   isCheckedIn,
+  statusLabel,
+  statusMeta,
+  needsAttention,
   isLoading,
   isSubmitting,
   lastPunchLabel,
+  workedHoursLabel,
+  lastSuccessfulActionLabel,
+  shiftTimerLabel,
+  shiftEndLabel,
   shiftCountdownLabel,
   shiftEndsLabel,
   lastCapturedSelfieUri,
   recentPunches,
   errorMessage,
   statusMessage,
+  punchInBlockedReason,
+  punchOutBlockedReason,
   onPunchIn,
   onPunchOut,
   onRefresh,
 }: TeacherPunchTabProps) {
-  const punchInDisabled = isLoading || isSubmitting || isCheckedIn;
-  const punchOutDisabled = isLoading || isSubmitting || !isCheckedIn;
+  const punchInDisabled =
+    isLoading || isSubmitting || punchInBlockedReason != null;
+  const punchOutDisabled =
+    isLoading || isSubmitting || punchOutBlockedReason != null;
+  const actionHint = punchInBlockedReason ?? punchOutBlockedReason;
 
   return (
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -95,26 +116,54 @@ export function TeacherPunchTab({
         <View style={styles.stateRow}>
           <View style={styles.statusBlock}>
             <Text style={styles.statusKicker}>Current status</Text>
-            <Text style={styles.statusValue}>{isCheckedIn ? 'Checked In' : 'Checked Out'}</Text>
-            <Text style={styles.statusMeta}>Last punch at {lastPunchLabel}</Text>
+            <Text style={styles.statusValue}>{statusLabel}</Text>
+            <Text style={styles.statusMeta}>{statusMeta}</Text>
           </View>
-          <View style={[styles.statusChip, isCheckedIn ? styles.statusChipIn : styles.statusChipOut]}>
-            <Text style={isCheckedIn ? styles.statusChipTextIn : styles.statusChipTextOut}>
-              {isCheckedIn ? 'Live' : 'Off Duty'}
+          <View
+            style={[
+              styles.statusChip,
+              needsAttention
+                ? styles.statusChipWarning
+                : isCheckedIn
+                  ? styles.statusChipIn
+                  : styles.statusChipOut,
+            ]}
+          >
+            <Text
+              style={
+                needsAttention
+                  ? styles.statusChipTextWarning
+                  : isCheckedIn
+                    ? styles.statusChipTextIn
+                    : styles.statusChipTextOut
+              }
+            >
+              {needsAttention ? 'Action Needed' : isCheckedIn ? 'Live' : 'Off Duty'}
             </Text>
           </View>
         </View>
 
         <View style={styles.shiftPanel}>
           <View style={styles.shiftTile}>
-            <Text style={styles.shiftLabel}>Shift timer</Text>
+            <Text style={styles.shiftLabel}>{shiftTimerLabel}</Text>
             <Text style={styles.shiftValue}>
               {isCheckedIn ? shiftCountdownLabel ?? '08:00:00' : '08:00:00'}
             </Text>
           </View>
           <View style={styles.shiftTile}>
-            <Text style={styles.shiftLabel}>Shift ends</Text>
+            <Text style={styles.shiftLabel}>{shiftEndLabel}</Text>
             <Text style={styles.shiftValue}>{shiftEndsLabel ?? '--:--'}</Text>
+          </View>
+        </View>
+
+        <View style={styles.summaryRow}>
+          <View style={styles.summaryTile}>
+            <Text style={styles.summaryLabel}>Worked today</Text>
+            <Text style={styles.summaryValue}>{workedHoursLabel}</Text>
+          </View>
+          <View style={styles.summaryTile}>
+            <Text style={styles.summaryLabel}>Last success</Text>
+            <Text style={styles.summaryValue}>{lastSuccessfulActionLabel}</Text>
           </View>
         </View>
 
@@ -156,6 +205,8 @@ export function TeacherPunchTab({
             )}
           </Pressable>
         </View>
+
+        {actionHint ? <Text style={styles.actionHint}>{actionHint}</Text> : null}
       </SurfaceCard>
 
       <SurfaceCard>
@@ -299,6 +350,9 @@ const styles = StyleSheet.create({
   statusChipOut: {
     backgroundColor: '#E2E8F0',
   },
+  statusChipWarning: {
+    backgroundColor: '#FEF3C7',
+  },
   statusChipTextIn: {
     color: '#1D4ED8',
     fontSize: 12,
@@ -311,10 +365,41 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textTransform: 'uppercase',
   },
+  statusChipTextWarning: {
+    color: '#B45309',
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
   shiftPanel: {
     flexDirection: 'row',
     gap: 10,
     marginTop: 18,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+  },
+  summaryTile: {
+    flex: 1,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    backgroundColor: 'rgba(255,255,255,0.82)',
+  },
+  summaryLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#64748B',
+    textTransform: 'uppercase',
+  },
+  summaryValue: {
+    marginTop: 8,
+    fontSize: 16,
+    lineHeight: 21,
+    fontWeight: '800',
+    color: '#0F172A',
   },
   shiftTile: {
     flex: 1,
@@ -354,6 +439,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     marginTop: 18,
+  },
+  actionHint: {
+    marginTop: 12,
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#92400E',
+    fontWeight: '700',
   },
   actionButton: {
     flex: 1,

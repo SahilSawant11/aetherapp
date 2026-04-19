@@ -1,4 +1,5 @@
 export const TEACHER_SHIFT_DURATION_MS = 8 * 60 * 60 * 1000;
+export const TEACHER_STALE_SHIFT_DURATION_MS = 16 * 60 * 60 * 1000;
 export const TEACHER_SELFIE_BUCKET = 'teacher-selfies';
 
 export type PunchType = 'in' | 'out';
@@ -14,6 +15,15 @@ export type TeacherAttendanceRecord = {
   selfiePath: string;
   devicePlatform: string | null;
   createdAt: string;
+};
+
+export type TeacherAttendanceState = {
+  isCheckedIn: boolean;
+  needsAttention: boolean;
+  statusLabel: string;
+  statusTone: 'active' | 'inactive' | 'warning';
+  subtitle: string;
+  activeRecord: TeacherAttendanceRecord | null;
 };
 
 type RawTeacherAttendanceRecord = {
@@ -87,6 +97,158 @@ export const getActivePunchInRecord = (
   }
 
   return latestRecord;
+};
+
+const parseTimestamp = (timestamp: string) => {
+  const parsed = new Date(timestamp);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+export const getCurrentShiftDurationMs = (
+  records: TeacherAttendanceRecord[],
+  nowMs: number = Date.now()
+) => {
+  const activeRecord = getActivePunchInRecord(records);
+  if (!activeRecord) {
+    return null;
+  }
+
+  const parsed = parseTimestamp(activeRecord.punchedAt);
+  if (!parsed) {
+    return null;
+  }
+
+  return Math.max(0, nowMs - parsed.getTime());
+};
+
+export const getWorkedDurationMs = (
+  records: TeacherAttendanceRecord[],
+  nowMs: number = Date.now()
+) => {
+  let totalMs = 0;
+  let openPunchInAt: Date | null = null;
+
+  for (const record of [...records].reverse()) {
+    const parsed = parseTimestamp(record.punchedAt);
+    if (!parsed) {
+      continue;
+    }
+
+    if (record.punchType === 'in') {
+      openPunchInAt = parsed;
+      continue;
+    }
+
+    if (!openPunchInAt) {
+      continue;
+    }
+
+    totalMs += Math.max(0, parsed.getTime() - openPunchInAt.getTime());
+    openPunchInAt = null;
+  }
+
+  if (openPunchInAt) {
+    totalMs += Math.max(0, nowMs - openPunchInAt.getTime());
+  }
+
+  return totalMs;
+};
+
+export const getCompletedShiftCount = (records: TeacherAttendanceRecord[]) => {
+  let completedShifts = 0;
+  let openPunchIn = false;
+
+  for (const record of [...records].reverse()) {
+    if (record.punchType === 'in') {
+      openPunchIn = true;
+      continue;
+    }
+
+    if (openPunchIn) {
+      completedShifts += 1;
+      openPunchIn = false;
+    }
+  }
+
+  return completedShifts;
+};
+
+export const formatHoursAndMinutes = (durationMs: number) => {
+  const totalMinutes = Math.floor(Math.max(0, durationMs) / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours === 0) {
+    return `${minutes}m`;
+  }
+
+  return `${hours}h ${minutes}m`;
+};
+
+export const getPunchActionBlockReason = (
+  records: TeacherAttendanceRecord[],
+  punchType: PunchType,
+  nowMs: number = Date.now()
+) => {
+  const latestRecord = records[0];
+
+  if (punchType === 'in') {
+    if (!latestRecord || latestRecord.punchType === 'out') {
+      return null;
+    }
+
+    const shiftDurationMs = getCurrentShiftDurationMs(records, nowMs);
+    if (shiftDurationMs != null && shiftDurationMs >= TEACHER_STALE_SHIFT_DURATION_MS) {
+      return 'Your last punch in is still open. Punch out to close that shift before starting a new one.';
+    }
+
+    return 'You are already checked in. Punch out when your shift is complete.';
+  }
+
+  if (!latestRecord || latestRecord.punchType === 'out') {
+    return 'Punch in before you can punch out.';
+  }
+
+  return null;
+};
+
+export const getTeacherAttendanceState = (
+  records: TeacherAttendanceRecord[],
+  nowMs: number = Date.now()
+): TeacherAttendanceState => {
+  const activeRecord = getActivePunchInRecord(records);
+
+  if (!activeRecord) {
+    return {
+      isCheckedIn: false,
+      needsAttention: false,
+      statusLabel: 'Checked Out',
+      statusTone: 'inactive',
+      subtitle: 'Ready for the next punch in.',
+      activeRecord: null,
+    };
+  }
+
+  const shiftDurationMs = getCurrentShiftDurationMs(records, nowMs);
+  if (shiftDurationMs != null && shiftDurationMs >= TEACHER_STALE_SHIFT_DURATION_MS) {
+    return {
+      isCheckedIn: true,
+      needsAttention: true,
+      statusLabel: 'Needs Punch Out',
+      statusTone: 'warning',
+      subtitle: 'A previous shift is still open and should be closed out.',
+      activeRecord,
+    };
+  }
+
+  return {
+    isCheckedIn: true,
+    needsAttention: false,
+    statusLabel: 'Checked In',
+    statusTone: 'active',
+    subtitle: 'Shift is active and attendance is up to date.',
+    activeRecord,
+  };
 };
 
 export const formatDuration = (durationMs: number) => {
