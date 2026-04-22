@@ -2,10 +2,11 @@ import React, { memo, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import {
-  DEFAULT_PICKUP_PLAN,
   formatCountdownFromNow,
   formatTime12Hour,
   getCurrentLectureState,
+  ParentDashboardSlot,
+  ParentPickupPlan,
   PARENT_DASHBOARD_ACTIONS,
 } from '../../lib/parentDashboard';
 import { ParentPickupCard } from './ParentPickupCard';
@@ -14,7 +15,12 @@ import { SurfaceCard } from '../ui/SurfaceCard';
 type ParentStatusSectionProps = {
   alertCount: number;
   parentName: string;
-  studentName?: string;
+  studentName: string;
+  gradeLabel?: string;
+  homeroom?: string;
+  pickupPlan: ParentPickupPlan;
+  timetable: ParentDashboardSlot[];
+  helperText?: string | null;
 };
 
 function LocationPinIcon() {
@@ -34,7 +40,12 @@ function LocationPinIcon() {
 function ParentStatusSectionComponent({
   alertCount,
   parentName,
-  studentName = 'Rahul',
+  studentName,
+  gradeLabel,
+  homeroom,
+  pickupPlan,
+  timetable,
+  helperText,
 }: ParentStatusSectionProps) {
   const [now, setNow] = useState(() => new Date());
   const [selectedActionKey, setSelectedActionKey] = useState<'absence' | 'pickup' | 'message'>(
@@ -49,22 +60,24 @@ function ParentStatusSectionComponent({
     return () => clearInterval(interval);
   }, []);
 
-  const lecture = useMemo(() => getCurrentLectureState(now), [now]);
+  const lecture = useMemo(() => getCurrentLectureState(now, timetable), [now, timetable]);
   const selectedAction = useMemo(
     () => PARENT_DASHBOARD_ACTIONS.find(action => action.key === selectedActionKey)!,
     [selectedActionKey]
   );
-  const pickupCountdownLabel = useMemo(
-    () => formatCountdownFromNow(DEFAULT_PICKUP_PLAN.time, now),
-    [now]
-  );
-  const pickupTimeLabel = `${formatTime12Hour(DEFAULT_PICKUP_PLAN.time)} Today`;
+  const pickupCountdownLabel = useMemo(() => formatCountdownFromNow(pickupPlan.time, now), [
+    now,
+    pickupPlan.time,
+  ]);
+  const pickupTimeLabel = `${formatTime12Hour(pickupPlan.time)} Today`;
   const todaysDateLabel = now.toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'short',
     day: 'numeric',
   });
   const greetingName = parentName.split(' ')[0] ?? parentName;
+  const schoolDayLabel = gradeLabel ?? homeroom ?? todaysDateLabel.split(',')[0];
+  const contactName = pickupPlan.contactName || greetingName;
 
   return (
     <View style={styles.main}>
@@ -77,13 +90,14 @@ function ParentStatusSectionComponent({
           <Text style={styles.locationText}>{lecture.room}</Text>
         </View>
         <Text style={styles.timeText}>{lecture.time}</Text>
+        {helperText ? <Text style={styles.helperText}>{helperText}</Text> : null}
       </SurfaceCard>
 
       <ParentPickupCard
         countdownLabel={pickupCountdownLabel}
-        contactName={greetingName}
-        contactRelation={DEFAULT_PICKUP_PLAN.contactRelation}
-        gate={DEFAULT_PICKUP_PLAN.gate}
+        contactName={contactName}
+        contactRelation={pickupPlan.contactRelation}
+        gate={pickupPlan.gate}
         pickupTimeLabel={pickupTimeLabel}
       />
 
@@ -91,11 +105,11 @@ function ParentStatusSectionComponent({
         <Text style={styles.sectionTitle}>Today at a glance</Text>
         <View style={styles.row}>
           <View style={styles.tile}>
-            <Text style={styles.tileValue}>{todaysDateLabel.split(',')[0]}</Text>
+            <Text style={styles.tileValue}>{schoolDayLabel}</Text>
             <Text style={styles.tileLabel}>School day</Text>
           </View>
           <View style={styles.tile}>
-            <Text style={styles.tileValue}>{formatTime12Hour(DEFAULT_PICKUP_PLAN.time)}</Text>
+            <Text style={styles.tileValue}>{formatTime12Hour(pickupPlan.time)}</Text>
             <Text style={styles.tileLabel}>Pickup</Text>
           </View>
           <View style={styles.tile}>
@@ -182,6 +196,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     letterSpacing: 1,
     color: '#64748B',
+    fontWeight: '700',
+  },
+  helperText: {
+    marginTop: 14,
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#047857',
     fontWeight: '700',
   },
   sectionTitle: {

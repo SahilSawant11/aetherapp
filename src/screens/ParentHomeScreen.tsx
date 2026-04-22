@@ -1,5 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Animated,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppUser } from '../auth/session';
@@ -10,7 +17,8 @@ import { ParentStatusSection } from '../components/parent-home/ParentStatusSecti
 import { AppBottomTabs, AppTabItem } from '../components/ui/AppBottomTabs';
 import { AppHeader } from '../components/ui/AppHeader';
 import { SurfaceCard } from '../components/ui/SurfaceCard';
-import { PARENT_ALERTS } from '../lib/parentDashboard';
+import { ParentDashboardAlert } from '../lib/parentDashboard';
+import { loadParentDashboard, ParentDashboardData } from '../lib/parentData';
 
 type ParentHomeScreenProps = {
   user: AppUser;
@@ -35,10 +43,16 @@ const PARENT_TABS: Array<AppTabItem<'today' | 'timeline' | 'alerts'>> = [
   },
 ];
 
-function ParentAlertsTab() {
+function ParentAlertsTab({
+  alerts,
+  helperText,
+}: {
+  alerts: ParentDashboardAlert[];
+  helperText?: string | null;
+}) {
   return (
     <View style={styles.alertsWrap}>
-      {PARENT_ALERTS.map(alert => (
+      {alerts.map(alert => (
         <SurfaceCard
           key={alert.id}
           tone={alert.tone === 'accent' ? 'accent' : 'default'}
@@ -51,6 +65,7 @@ function ParentAlertsTab() {
           <Text style={styles.alertBody}>{alert.body}</Text>
         </SurfaceCard>
       ))}
+      {helperText ? <Text style={styles.helperText}>{helperText}</Text> : null}
     </View>
   );
 }
@@ -59,6 +74,9 @@ export function ParentHomeScreen({ user, onSignOut }: ParentHomeScreenProps) {
   const insets = useSafeAreaInsets();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'today' | 'timeline' | 'alerts'>('today');
+  const [dashboardData, setDashboardData] = useState<ParentDashboardData | null>(null);
+  const [dashboardHelperText, setDashboardHelperText] = useState<string | null>(null);
+  const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
   const slideX = useRef(new Animated.Value(-320)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const tabContentPhase = useRef(new Animated.Value(1)).current;
@@ -77,6 +95,29 @@ export function ParentHomeScreen({ user, onSignOut }: ParentHomeScreenProps) {
       }),
     ]).start();
   }, [menuOpen, overlayOpacity, slideX]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const hydrateParentDashboard = async () => {
+      setIsLoadingDashboard(true);
+      const result = await loadParentDashboard(user.id);
+
+      if (cancelled) {
+        return;
+      }
+
+      setDashboardData(result.data);
+      setDashboardHelperText(result.helperText);
+      setIsLoadingDashboard(false);
+    };
+
+    hydrateParentDashboard();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user.id]);
 
   const handleTabPress = (tab: 'today' | 'timeline' | 'alerts') => {
     if (tab === activeTab) {
@@ -98,7 +139,7 @@ export function ParentHomeScreen({ user, onSignOut }: ParentHomeScreenProps) {
     });
   };
 
-  const alertCount = PARENT_ALERTS.length;
+  const alertCount = dashboardData?.alerts.length ?? 0;
   const avatarLabel = user.name
     .split(' ')
     .map(part => part[0])
@@ -155,11 +196,48 @@ export function ParentHomeScreen({ user, onSignOut }: ParentHomeScreenProps) {
             },
           ]}
         >
-          {activeTab === 'today' ? (
-            <ParentStatusSection alertCount={alertCount} parentName={user.name} />
+          {isLoadingDashboard ? (
+            <View style={styles.loadingWrap}>
+              <ActivityIndicator size="small" color="#059669" />
+              <Text style={styles.loadingText}>Loading parent dashboard...</Text>
+            </View>
           ) : null}
-          {activeTab === 'timeline' ? <ParentCalendarTab /> : null}
-          {activeTab === 'alerts' ? <ParentAlertsTab /> : null}
+          {activeTab === 'today' ? (
+            dashboardData ? (
+              <ScrollView
+                style={styles.scrollArea}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+              >
+                <ParentStatusSection
+                  alertCount={alertCount}
+                  parentName={user.name}
+                  studentName={dashboardData.student.name}
+                  gradeLabel={dashboardData.student.gradeLabel}
+                  homeroom={dashboardData.student.homeroom}
+                  pickupPlan={dashboardData.pickupPlan}
+                  timetable={dashboardData.timetable}
+                  helperText={dashboardHelperText}
+                />
+              </ScrollView>
+            ) : null
+          ) : null}
+          {activeTab === 'timeline' && dashboardData ? (
+            <ParentCalendarTab
+              attendance={dashboardData.attendance}
+              helperText={dashboardHelperText}
+              studentName={dashboardData.student.name}
+            />
+          ) : null}
+          {activeTab === 'alerts' && dashboardData ? (
+            <ScrollView
+              style={styles.scrollArea}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <ParentAlertsTab alerts={dashboardData.alerts} helperText={dashboardHelperText} />
+            </ScrollView>
+          ) : null}
         </Animated.View>
 
         <AppBottomTabs
@@ -199,11 +277,35 @@ const styles = StyleSheet.create({
   },
   main: {
     flex: 1,
+  },
+  scrollArea: {
+    flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: 16,
+    paddingBottom: 20,
   },
   alertsWrap: {
     paddingTop: 18,
     gap: 14,
+  },
+  loadingWrap: {
+    paddingTop: 24,
+    paddingBottom: 8,
+    alignItems: 'center',
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#047857',
+  },
+  helperText: {
+    paddingHorizontal: 4,
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#64748B',
+    fontWeight: '600',
   },
   alertTitle: {
     flex: 1,

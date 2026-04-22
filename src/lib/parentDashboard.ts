@@ -29,6 +29,14 @@ export type ParentPickupPlan = {
   time: string;
 };
 
+export type ParentLectureState = {
+  kicker: string;
+  title: string;
+  room: string;
+  time: string;
+  progressLabel: string;
+};
+
 export const PARENT_DASHBOARD_ACTIONS: ParentDashboardAction[] = [
   {
     key: 'absence',
@@ -117,7 +125,10 @@ export const formatCountdownFromNow = (time: string, now: Date) => {
   return `Pickup in ${hours}h ${minutes}m`;
 };
 
-export const getCurrentLectureState = (now: Date) => {
+export const getCurrentLectureState = (
+  now: Date,
+  timetable: ParentDashboardSlot[] = WEEKDAY_TIMETABLE
+): ParentLectureState => {
   const day = now.getDay();
   if (day === 0 || day === 6) {
     return {
@@ -130,7 +141,7 @@ export const getCurrentLectureState = (now: Date) => {
   }
 
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const currentLecture = WEEKDAY_TIMETABLE.find(slot => {
+  const currentLecture = timetable.find(slot => {
     const start = toMinutes(slot.start);
     const end = toMinutes(slot.end);
     return nowMinutes >= start && nowMinutes < end;
@@ -146,7 +157,7 @@ export const getCurrentLectureState = (now: Date) => {
     };
   }
 
-  const nextLecture = WEEKDAY_TIMETABLE.find(slot => nowMinutes < toMinutes(slot.start));
+  const nextLecture = timetable.find(slot => nowMinutes < toMinutes(slot.start));
   if (nextLecture) {
     return {
       kicker: 'Next lecture',
@@ -164,4 +175,32 @@ export const getCurrentLectureState = (now: Date) => {
     time: 'School day has ended for today.',
     progressLabel: 'Awaiting pickup',
   };
+};
+
+export const formatAlertTimestamp = (value: string, now: Date = new Date()) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfYesterday = new Date(startOfToday);
+  startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+  const timeLabel = parsed.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+
+  if (parsed >= startOfToday) {
+    return `Today · ${timeLabel}`;
+  }
+
+  if (parsed >= startOfYesterday) {
+    return `Yesterday · ${timeLabel}`;
+  }
+
+  return parsed.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
 };
