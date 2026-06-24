@@ -257,3 +257,114 @@ using (
   auth.uid() = parent_id
   or (student_id is not null and public.parent_has_student(student_id))
 );
+
+create table if not exists public.push_devices (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  platform text not null check (platform in ('ios', 'android')),
+  push_provider text not null default 'fcm' check (push_provider in ('fcm', 'apns')),
+  push_token text not null unique,
+  timezone text not null default 'UTC',
+  locale text,
+  notifications_enabled boolean not null default true,
+  last_seen_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, push_token)
+);
+
+create index if not exists push_devices_user_id_idx
+  on public.push_devices (user_id);
+
+create index if not exists push_devices_enabled_timezone_idx
+  on public.push_devices (notifications_enabled, timezone);
+
+alter table public.push_devices enable row level security;
+
+drop policy if exists "Users can read their own push devices" on public.push_devices;
+create policy "Users can read their own push devices"
+on public.push_devices
+for select
+using (auth.uid() = user_id);
+
+drop policy if exists "Users can insert their own push devices" on public.push_devices;
+create policy "Users can insert their own push devices"
+on public.push_devices
+for insert
+with check (auth.uid() = user_id);
+
+drop policy if exists "Users can update their own push devices" on public.push_devices;
+create policy "Users can update their own push devices"
+on public.push_devices
+for update
+using (auth.uid() = user_id);
+
+create or replace function public.touch_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists push_devices_set_updated_at on public.push_devices;
+create trigger push_devices_set_updated_at
+before update on public.push_devices
+for each row execute procedure public.touch_updated_at();
+
+create table if not exists public.notification_campaigns (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  title text not null,
+  body text not null,
+  payload jsonb not null default '{}'::jsonb,
+  audience_role text check (audience_role in ('parent', 'teacher')),
+  send_strategy text not null check (send_strategy in ('once', 'daily')),
+  scheduled_time time not null,
+  scheduled_date date,
+  timezone_mode text not null default 'user_local' check (timezone_mode in ('user_local', 'fixed')),
+  fixed_timezone text,
+  is_active boolean not null default true,
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now(),
+  check (
+    (send_strategy = 'daily' and scheduled_date is null)
+    or (send_strategy = 'once' and scheduled_date is not null)
+  ),
+  check (
+    (timezone_mode = 'user_local' and fixed_timezone is null)
+    or (timezone_mode = 'fixed' and fixed_timezone is not null)
+  )
+);
+
+create index if not exists notification_campaigns_active_idx
+  on public.notification_campaigns (is_active, send_strategy, scheduled_time);
+
+create table if not exists public.notification_deliveries (
+  id uuid primary key default gen_random_uuid(),
+  campaign_id uuid references public.notification_campaigns(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  push_device_id uuid references public.push_devices(id) on delete set null,
+  provider_message_id text,
+  scheduled_for timestamptz not null,
+  sent_at timestamptz,
+  status text not null default 'pending'
+    check (status in ('pending', 'sent', 'failed', 'skipped')),
+  error_message text,
+  created_at timestamptz not null default now(),
+  unique (campaign_id, user_id, scheduled_for)
+);
+
+create index if not exists notification_deliveries_status_scheduled_for_idx
+  on public.notification_deliveries (status, scheduled_for);
+
+alter table public.notification_campaigns enable row level security;
+alter table public.notification_deliveries enable row level security;
+
+drop policy if exists "Users can read their own notification deliveries" on public.notification_deliveries;
+create policy "Users can read their own notification deliveries"
+on public.notification_deliveries
+for select
+using (auth.uid() = user_id);

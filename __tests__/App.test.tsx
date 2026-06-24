@@ -14,6 +14,19 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 jest.mock('../src/lib/supabase', () => ({
   supabase: null,
 }));
+jest.mock('../src/lib/notifications', () => ({
+  registerPushBackgroundHandler: jest.fn(),
+  syncPushNotificationsForUser: jest.fn(() => Promise.resolve(undefined)),
+}));
+jest.mock('react-native-geolocation-service', () => ({
+  getCurrentPosition: jest.fn(),
+  watchPosition: jest.fn(),
+  clearWatch: jest.fn(),
+  stopObserving: jest.fn(),
+}));
+jest.mock('react-native-image-picker', () => ({
+  launchCamera: jest.fn(() => Promise.resolve({ assets: [] })),
+}));
 jest.mock('react-native-linear-gradient', () => 'LinearGradient');
 jest.mock('../src/assets/models/aether-crystal.glb', () => 1, { virtual: true });
 jest.mock('react-native-filament', () => {

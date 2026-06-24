@@ -20,6 +20,7 @@ type AuthResult = {
 type SignInScreenProps = {
   isSupabaseConfigured: boolean;
   onSignIn: (payload: { email: string; password: string }) => Promise<AuthResult>;
+  onPasswordReset: (payload: { email: string }) => Promise<AuthResult>;
   onSignUpParent: (payload: {
     fullName: string;
     email: string;
@@ -35,6 +36,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function SignInScreen({
   isSupabaseConfigured,
   onSignIn,
+  onPasswordReset,
   onSignUpParent,
 }: SignInScreenProps) {
   const [mode, setMode] = useState<AuthMode>('sign-in');
@@ -44,13 +46,14 @@ export function SignInScreen({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [feedback, setFeedback] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   const clearFeedback = () => setFeedback(null);
   const normalizedEmail = email.trim().toLowerCase();
   const normalizedFullName = fullName.trim();
   const isRegisterMode = mode === 'register-parent';
   const submitDisabled = useMemo(() => {
-    if (!isSupabaseConfigured || submitting) {
+    if (!isSupabaseConfigured || submitting || resettingPassword) {
       return true;
     }
 
@@ -70,8 +73,12 @@ export function SignInScreen({
     normalizedEmail,
     normalizedFullName,
     password,
+    resettingPassword,
     submitting,
   ]);
+
+  const passwordResetDisabled =
+    !isSupabaseConfigured || submitting || resettingPassword || !normalizedEmail;
 
   const handleModeChange = (nextMode: AuthMode) => {
     if (nextMode === mode) {
@@ -170,10 +177,44 @@ export function SignInScreen({
     }
   };
 
+  const handlePasswordReset = async () => {
+    clearFeedback();
+
+    if (!isSupabaseConfigured) {
+      setFeedback('Finish your Supabase setup before requesting a password reset.');
+      return;
+    }
+
+    if (!normalizedEmail) {
+      setFeedback('Enter your email address first.');
+      return;
+    }
+
+    if (!EMAIL_PATTERN.test(normalizedEmail)) {
+      setFeedback('Enter a valid email address.');
+      return;
+    }
+
+    try {
+      setResettingPassword(true);
+      const result = await onPasswordReset({ email: normalizedEmail });
+      setFeedback(
+        result.error ??
+          result.message ??
+          'Password reset email sent. Check your inbox for the secure reset link.'
+      );
+    } catch {
+      setFeedback('Something went wrong while sending the reset email. Please try again.');
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
   const feedbackIsError =
     feedback != null &&
     !feedback.toLowerCase().includes('check your email') &&
-    !feedback.toLowerCase().includes('sign in once your address is confirmed');
+    !feedback.toLowerCase().includes('sign in once your address is confirmed') &&
+    !feedback.toLowerCase().includes('password reset email sent');
 
   const submitLabel = submitting
     ? 'Please wait...'
@@ -366,6 +407,23 @@ export function SignInScreen({
               <Text style={styles.submitText}>{submitLabel}</Text>
             </Pressable>
 
+            {!isRegisterMode ? (
+              <Pressable
+                disabled={passwordResetDisabled}
+                onPress={handlePasswordReset}
+                style={styles.forgotPasswordButton}
+              >
+                <Text
+                  style={[
+                    styles.forgotPasswordText,
+                    passwordResetDisabled && styles.forgotPasswordTextDisabled,
+                  ]}
+                >
+                  {resettingPassword ? 'Sending reset email...' : 'Forgot password?'}
+                </Text>
+              </Pressable>
+            ) : null}
+
             <Text style={styles.footerText}>{helperText}</Text>
           </View>
         </ScrollView>
@@ -522,6 +580,20 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
+  },
+  forgotPasswordButton: {
+    marginTop: 14,
+    alignSelf: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  forgotPasswordText: {
+    color: '#214B38',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  forgotPasswordTextDisabled: {
+    color: '#9AA6A0',
   },
   footerText: {
     marginTop: 16,

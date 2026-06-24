@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { Linking } from 'react-native';
 import { User } from '@supabase/supabase-js';
-import { isSupabaseConfigured } from '../config/supabase';
+import { isSupabaseConfigured, supabaseConfig } from '../config/supabase';
 import { supabase } from '../lib/supabase';
 
 export type AppRole = 'parent' | 'teacher';
@@ -14,6 +15,14 @@ export type AppUser = {
 
 type SignInPayload = {
   email: string;
+  password: string;
+};
+
+type PasswordResetPayload = {
+  email: string;
+};
+
+type UpdatePasswordPayload = {
   password: string;
 };
 
@@ -32,7 +41,11 @@ type SessionContextValue = {
   user: AppUser | null;
   isHydrating: boolean;
   isSupabaseConfigured: boolean;
+  isPasswordRecovery: boolean;
   signInWithPassword: (payload: SignInPayload) => Promise<AuthResult>;
+  resetPasswordForEmail: (payload: PasswordResetPayload) => Promise<AuthResult>;
+  updatePassword: (payload: UpdatePasswordPayload) => Promise<AuthResult>;
+  finishPasswordRecovery: () => Promise<void>;
   signUpParent: (payload: ParentSignUpPayload) => Promise<AuthResult>;
   signOut: () => Promise<void>;
 };
@@ -54,6 +67,41 @@ const fallbackNameFromEmail = (email: string | undefined) => {
     return 'Aether User';
   }
   return email.split('@')[0] ?? 'Aether User';
+};
+
+const recoveryParamsFromUrl = (url: string) => {
+  const parameterParts = [
+    url.split('#')[1],
+    url.split('?')[1]?.split('#')[0],
+  ].filter((part): part is string => Boolean(part));
+
+  const params: Record<string, string> = {};
+
+  parameterParts.forEach(part => {
+    part.split('&').forEach(pair => {
+      const [rawKey, ...rawValueParts] = pair.split('=');
+
+      if (!rawKey) {
+        return;
+      }
+
+      const key = decodeURIComponent(rawKey);
+      const value = decodeURIComponent(rawValueParts.join('=').replace(/\+/g, ' '));
+      params[key] = value;
+    });
+  });
+
+  const accessToken = params.access_token;
+  const refreshToken = params.refresh_token;
+  const type = params.type;
+  const errorDescription = params.error_description;
+
+  return {
+    accessToken,
+    refreshToken,
+    isRecoveryLink: type === 'recovery' || url.startsWith(supabaseConfig.passwordResetRedirectUrl),
+    errorDescription,
+  };
 };
 
 async function resolveAppUser(authUser: User): Promise<AppUser | null> {
@@ -97,12 +145,15 @@ async function resolveAppUser(authUser: User): Promise<AppUser | null> {
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [isHydrating, setIsHydrating] = useState(true);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
   useEffect(() => {
     if (!supabase || !isSupabaseConfigured) {
       setIsHydrating(false);
       return;
     }
+
+    const client = supabase;
 
     const syncSession = async (nextUser: User | null) => {
       if (!nextUser) {
@@ -114,7 +165,39 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       setUser(resolvedUser);
     };
 
-    supabase.auth
+    const handlePasswordRecoveryUrl = async (url: string) => {
+      const { accessToken, refreshToken, isRecoveryLink, errorDescription } =
+        recoveryParamsFromUrl(url);
+
+      if (!isRecoveryLink) {
+        return;
+      }
+
+      if (errorDescription) {
+        setIsPasswordRecovery(false);
+        return;
+      }
+
+      if (!accessToken || !refreshToken) {
+        return;
+      }
+
+      setIsPasswordRecovery(true);
+      const { data, error } = await client.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+
+      if (error) {
+        setIsPasswordRecovery(false);
+        setUser(null);
+        return;
+      }
+
+      await syncSession(data.user);
+    };
+
+    client.auth
       .getSession()
       .then(async ({ data }) => {
         await syncSession(data.session?.user ?? null);
@@ -125,8 +208,26 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         setIsHydrating(false);
       });
 
-    const { data: subscription } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+    Linking.getInitialURL()
+      .then(url => {
+        if (url) {
+          return handlePasswordRecoveryUrl(url);
+        }
+      })
+      .catch(() => undefined);
+
+    const linkingSubscription = Linking.addEventListener('url', ({ url }) => {
+      handlePasswordRecoveryUrl(url).catch(() => {
+        setIsPasswordRecovery(false);
+      });
+    });
+
+    const { data: subscription } = client.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          setIsPasswordRecovery(true);
+        }
+
         syncSession(session?.user ?? null).catch(() => {
           setUser(null);
         });
@@ -134,6 +235,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     );
 
     return () => {
+      linkingSubscription.remove();
       subscription.subscription.unsubscribe();
     };
   }, []);
@@ -143,6 +245,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       user,
       isHydrating,
       isSupabaseConfigured,
+      isPasswordRecovery,
       signInWithPassword: async ({ email, password }) => {
         if (!supabase || !isSupabaseConfigured) {
           return {
@@ -157,6 +260,50 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         });
 
         return { error: error?.message ?? null };
+      },
+      resetPasswordForEmail: async ({ email }) => {
+        if (!supabase || !isSupabaseConfigured) {
+          return {
+            error:
+              'Supabase is not configured yet. Add your project URL and anon key in src/config/supabase.ts.',
+          };
+        }
+
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: supabaseConfig.passwordResetRedirectUrl,
+        });
+
+        if (error) {
+          return { error: error.message };
+        }
+
+        return {
+          error: null,
+          message: 'Password reset email sent. Check your inbox for the secure reset link.',
+        };
+      },
+      updatePassword: async ({ password }) => {
+        if (!supabase || !isSupabaseConfigured) {
+          return {
+            error:
+              'Supabase is not configured yet. Add your project URL and anon key in src/config/supabase.ts.',
+          };
+        }
+
+        const { error } = await supabase.auth.updateUser({ password });
+
+        return { error: error?.message ?? null };
+      },
+      finishPasswordRecovery: async () => {
+        setIsPasswordRecovery(false);
+
+        if (!supabase || !isSupabaseConfigured) {
+          setUser(null);
+          return;
+        }
+
+        await supabase.auth.signOut();
+        setUser(null);
       },
       signUpParent: async ({ fullName, email, password }) => {
         if (!supabase || !isSupabaseConfigured) {
@@ -197,7 +344,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
       },
     }),
-    [isHydrating, user]
+    [isHydrating, isPasswordRecovery, user]
   );
 
   return (

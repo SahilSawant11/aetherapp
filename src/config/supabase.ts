@@ -1,6 +1,7 @@
 export const supabaseConfig = {
   url: 'https://umwrgevyasizvympclaz.supabase.co',
   anonKey: 'sb_publishable_1RHLFjLjaPhE54rzVEDWhQ_iVVhSGLf',
+  passwordResetRedirectUrl: 'aetherapp://reset-password',
 };
 
 const normalizedUrl = supabaseConfig.url.trim();
