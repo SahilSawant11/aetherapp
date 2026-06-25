@@ -132,6 +132,7 @@ export function TeacherCalendarTab({ teacherId }: TeacherCalendarTabProps) {
         onDisplayDateChange={setDisplayDate}
         weekendsArePresent
         fillMissingWeekdaysAsAbsent
+        firstDayOfWeek={1}
       />
 
       <View style={styles.footer}>

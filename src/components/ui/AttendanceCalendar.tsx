@@ -19,9 +19,17 @@ type AttendanceCalendarProps = {
   title?: string;
   weekendsArePresent?: boolean;
   fillMissingWeekdaysAsAbsent?: boolean;
+  firstDayOfWeek?: 0 | 1; // 0 = Sunday (default), 1 = Monday
 };
 
-const WEEK_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const getWeekDays = (firstDay: 0 | 1 = 0) => {
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  if (firstDay === 1) {
+    return [...days.slice(1), days[0]];
+  }
+  return days;
+};
+
 const MONTH_LABELS = [
   'January',
   'February',
@@ -43,12 +51,15 @@ const dateKeyFor = (year: number, month: number, day: number) => {
   return `${year}-${monthText}-${dayText}`;
 };
 
-const buildCalendarGrid = (year: number, month: number): CalendarCell[] => {
-  const firstDay = new Date(year, month, 1).getDay();
+const buildCalendarGrid = (year: number, month: number, firstDayOfWeek: 0 | 1 = 0): CalendarCell[] => {
+  const firstDayOfMonth = new Date(year, month, 1).getDay();
+  let offset = firstDayOfMonth - firstDayOfWeek;
+  if (offset < 0) offset += 7;
+  
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const cells: CalendarCell[] = [];
 
-  for (let i = 0; i < firstDay; i += 1) {
+  for (let i = 0; i < offset; i += 1) {
     cells.push({ key: `empty-start-${i}`, day: null });
   }
 
@@ -84,6 +95,14 @@ const isWeekendDateKey = (dateKey: string) => {
   return dayOfWeek === 0 || dayOfWeek === 6;
 };
 
+// Helper to check if a date is in the future
+const isFutureDate = (year: number, month: number, day: number) => {
+  const today = new Date();
+  const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const checkDate = new Date(year, month, day);
+  return checkDate > todayDate;
+};
+
 export function AttendanceCalendar({
   attendance,
   accentColor = '#2563EB',
@@ -93,6 +112,7 @@ export function AttendanceCalendar({
   title = 'Attendance calendar',
   weekendsArePresent = true,
   fillMissingWeekdaysAsAbsent = false,
+  firstDayOfWeek = 0,
 }: AttendanceCalendarProps) {
   const [internalDisplayDate, setInternalDisplayDate] = useState(() => initialDate ?? new Date());
   const resolvedDisplayDate = displayDate ?? internalDisplayDate;
@@ -109,7 +129,8 @@ export function AttendanceCalendar({
     setInternalDisplayDate(date);
   };
 
-  const cells = useMemo(() => buildCalendarGrid(year, month), [year, month]);
+  const weekDays = useMemo(() => getWeekDays(firstDayOfWeek), [firstDayOfWeek]);
+  const cells = useMemo(() => buildCalendarGrid(year, month, firstDayOfWeek), [year, month, firstDayOfWeek]);
   const weeks = useMemo(() => {
     const chunks: CalendarCell[][] = [];
     for (let i = 0; i < cells.length; i += 7) {
@@ -183,7 +204,7 @@ export function AttendanceCalendar({
       </View>
 
       <View style={styles.weekHeaderRow}>
-        {WEEK_DAYS.map(day => (
+        {weekDays.map(day => (
           <Text key={day} style={styles.weekHeaderText}>
             {day}
           </Text>
@@ -195,12 +216,19 @@ export function AttendanceCalendar({
           <View key={`week-${weekIndex}`} style={styles.weekRow}>
             {week.map(cell => {
               const status = cell.dateKey ? attendance[cell.dateKey] : undefined;
-              const resolvedStatus =
-                status
-                ?? (cell.dateKey && weekendsArePresent && isWeekendDateKey(cell.dateKey)
-                  ? 'present'
-                  : undefined)
-                ?? (cell.dateKey && fillMissingWeekdaysAsAbsent ? 'absent' : undefined);
+              
+              // Check if the date is in the future
+              const isFuture = cell.day != null ? isFutureDate(year, month, cell.day) : false;
+              
+              // Only apply status for past dates (including today), not for future dates
+              const resolvedStatus = !isFuture && cell.day != null
+                ? (status
+                  ?? (cell.dateKey && weekendsArePresent && isWeekendDateKey(cell.dateKey)
+                    ? 'present'
+                    : undefined)
+                  ?? (cell.dateKey && fillMissingWeekdaysAsAbsent ? 'absent' : undefined))
+                : undefined;
+              
               const isToday =
                 cell.day != null &&
                 year === today.getFullYear() &&

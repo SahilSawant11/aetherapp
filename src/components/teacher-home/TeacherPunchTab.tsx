@@ -208,27 +208,6 @@ export function TeacherPunchTab({
 
         {actionHint ? <Text style={styles.actionHint}>{actionHint}</Text> : null}
       </SurfaceCard>
-
-      <SurfaceCard>
-        <Text style={styles.sectionTitle}>Recent activity</Text>
-        {recentPunches.length > 0 ? (
-          <View style={styles.logColumn}>
-            {recentPunches.map(item => (
-              <View key={item.id} style={styles.logRow}>
-                <View style={styles.logTextWrap}>
-                  <Text style={styles.logTitle}>{item.label}</Text>
-                  <Text style={styles.logMeta}>
-                    {item.status} · {item.location}
-                  </Text>
-                </View>
-                <Text style={styles.logTime}>{item.time}</Text>
-              </View>
-            ))}
-          </View>
-        ) : (
-          <Text style={styles.emptyText}>No punch records yet.</Text>
-        )}
-      </SurfaceCard>
     </ScrollView>
   );
 }

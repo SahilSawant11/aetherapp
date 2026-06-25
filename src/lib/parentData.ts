@@ -71,7 +71,7 @@ type ParentAlertRow = {
 
 const DEFAULT_STUDENT: ParentStudent = {
   id: 'sample-student',
-  name: 'Rahul',
+  name: 'Priya',
   gradeLabel: 'Grade 10',
   homeroom: 'Class X B',
 };
@@ -150,7 +150,8 @@ export async function loadParentDashboard(
       return {
         data: fallbackData,
         helperText:
-          'Link a student to this parent account in Supabase to show live attendance, schedule, and pickup details.',
+          //'Link a student to this parent account in Supabase to show live attendance, schedule, and pickup details.',
+          '',
       };
     }
 

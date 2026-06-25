@@ -19,6 +19,7 @@ export function ParentCalendarTab({
         attendance={attendance}
         accentColor="#059669"
         title={`${studentName}'s attendance`}
+        firstDayOfWeek={1}
       />
       {helperText ? <Text style={styles.helperText}>{helperText}</Text> : null}
     </View>

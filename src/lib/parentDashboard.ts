@@ -62,7 +62,7 @@ export const PARENT_ALERTS: ParentDashboardAlert[] = [
   {
     id: 'pickup-route',
     title: 'Pickup reminder',
-    body: 'Rahul’s dispersal gate opens at 2:45 PM today. Arrive five minutes early to avoid the queue.',
+    body: 'Priya’s dispersal gate opens at 2:45 PM today. Arrive five minutes early to avoid the queue.',
     time: 'Today · 2:15 PM',
     tone: 'accent',
   },
